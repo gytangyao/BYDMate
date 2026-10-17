@@ -14,6 +14,10 @@ interface BatterySnapshotDao {
     @Query("SELECT * FROM battery_snapshots ORDER BY timestamp DESC")
     fun getAll(): Flow<List<BatterySnapshotEntity>>
 
+    /** One-shot enumeration for the MySQL sync: every snapshot row, ascending. */
+    @Query("SELECT * FROM battery_snapshots ORDER BY timestamp")
+    suspend fun getAllSnapshot(): List<BatterySnapshotEntity>
+
     @Query("SELECT * FROM battery_snapshots ORDER BY timestamp DESC LIMIT :limit")
     fun getRecent(limit: Int = 50): Flow<List<BatterySnapshotEntity>>
 

@@ -543,7 +543,22 @@ private fun BatterySection(
     }
 }
 
+/**
+ * Log thresholds offered under the MySQL hub. [key] is the letter stored in prefs and compared
+ * against the logcat level column by [com.bydmate.app.data.mysql.CarLogCollector].
+ */
+private data class MysqlLogLevelOption(val key: String, val labelRes: Int)
+
+private val MYSQL_LOG_LEVELS = listOf(
+    MysqlLogLevelOption("V", R.string.settings_mysql_level_verbose),
+    MysqlLogLevelOption("D", R.string.settings_mysql_level_debug),
+    MysqlLogLevelOption("I", R.string.settings_mysql_level_info),
+    MysqlLogLevelOption("W", R.string.settings_mysql_level_warn),
+    MysqlLogLevelOption("E", R.string.settings_mysql_level_error),
+)
+
 @Composable
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 private fun IntegrationsSection(state: SettingsUiState, viewModel: SettingsViewModel) {
     SectionHeader(text = stringResource(R.string.settings_abrp_section_header))
     Card(
@@ -634,6 +649,105 @@ private fun IntegrationsSection(state: SettingsUiState, viewModel: SettingsViewM
             state.webhookSaveStatus?.let {
                 Text(it, color = AccentGreen, fontSize = 12.sp)
             }
+        }
+    }
+
+    SectionHeader(text = stringResource(R.string.settings_mysql_section_header))
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = CardSurfaceElevated),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            SettingToggleRow(
+                title = stringResource(R.string.settings_mysql_label),
+                traceId = "mysql",
+                description = stringResource(R.string.settings_mysql_description),
+                checked = state.mysqlEnabled,
+                onCheckedChange = { viewModel.toggleMysql(it) },
+            )
+            SettingsTextField(
+                label = stringResource(R.string.settings_mysql_host_label),
+                value = state.mysqlHost,
+                onValueChange = { viewModel.updateMysqlHost(it) },
+                keyboardType = KeyboardType.Uri,
+            )
+            SettingsTextField(
+                label = stringResource(R.string.settings_mysql_port_label),
+                value = state.mysqlPort,
+                onValueChange = { viewModel.updateMysqlPort(it) },
+                keyboardType = KeyboardType.Number,
+            )
+            SettingsTextField(
+                label = stringResource(R.string.settings_mysql_user_label),
+                value = state.mysqlUser,
+                onValueChange = { viewModel.updateMysqlUser(it) },
+                keyboardType = KeyboardType.Text,
+            )
+            SettingsTextField(
+                label = stringResource(R.string.settings_mysql_password_label),
+                value = state.mysqlPassword,
+                onValueChange = { viewModel.updateMysqlPassword(it) },
+                keyboardType = KeyboardType.Password,
+                secret = true
+            )
+            SettingsTextField(
+                label = stringResource(R.string.settings_mysql_database_label),
+                value = state.mysqlDatabase,
+                onValueChange = { viewModel.updateMysqlDatabase(it) },
+                keyboardType = KeyboardType.Text,
+            )
+            SettingsTextField(
+                label = stringResource(R.string.settings_mysql_vehicle_label),
+                value = state.mysqlVehicleId,
+                onValueChange = { viewModel.updateMysqlVehicleId(it) },
+                keyboardType = KeyboardType.Text,
+            )
+            SettingDivider()
+            SettingToggleRow(
+                title = stringResource(R.string.settings_mysql_logs_label),
+                traceId = "mysql_logs",
+                description = stringResource(R.string.settings_mysql_logs_description),
+                checked = state.mysqlLogsEnabled,
+                onCheckedChange = { viewModel.toggleMysqlLogs(it) },
+            )
+            Text(
+                stringResource(R.string.settings_mysql_logs_level_label),
+                color = TextSecondary, fontSize = 12.sp, lineHeight = 16.sp,
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                MYSQL_LOG_LEVELS.forEach { level ->
+                    UnitChip(
+                        label = stringResource(level.labelRes),
+                        selected = state.mysqlLogLevel == level.key,
+                        onClick = { viewModel.setMysqlLogLevel(level.key) },
+                    )
+                }
+            }
+            SettingActionRow(
+                title = stringResource(R.string.settings_mysql_save_button),
+                buttonLabel = stringResource(R.string.settings_mysql_save_button),
+                onClick = { viewModel.saveMysqlSettings() },
+                style = SettingButtonStyle.Primary,
+            )
+            SettingActionRow(
+                title = stringResource(R.string.settings_mysql_test_button),
+                buttonLabel = stringResource(R.string.settings_mysql_test_button),
+                onClick = { viewModel.testMysqlConnection() },
+                enabled = !state.mysqlBusy,
+            )
+            SettingActionRow(
+                title = stringResource(R.string.settings_mysql_sync_button),
+                buttonLabel = stringResource(R.string.settings_mysql_sync_button),
+                onClick = { viewModel.syncMysqlNow() },
+                enabled = !state.mysqlBusy,
+            )
+            state.mysqlSaveStatus?.let { Text(it, color = AccentGreen, fontSize = 12.sp) }
+            state.mysqlTestStatus?.let { Text(it, color = AccentGreen, fontSize = 12.sp) }
+            state.mysqlSyncStatus?.let { Text(it, color = AccentGreen, fontSize = 12.sp) }
         }
     }
 

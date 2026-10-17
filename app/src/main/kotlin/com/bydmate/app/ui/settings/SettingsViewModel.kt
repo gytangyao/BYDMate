@@ -31,6 +31,8 @@ import com.bydmate.app.data.local.EnergyDataReader
 import com.bydmate.app.data.local.HistoryImporter
 import com.bydmate.app.data.local.LocalePreferences
 import com.bydmate.app.data.local.dao.IdleDrainDao
+import com.bydmate.app.data.mysql.MysqlConfig
+import com.bydmate.app.data.mysql.MysqlDefaults
 import com.bydmate.app.diagnostics.LogRecorder
 import com.bydmate.app.diagnostics.Trace
 import com.bydmate.app.BuildConfig
@@ -206,6 +208,25 @@ data class SettingsUiState(
     val webhookSecret: String = "",
     val webhookSendLocation: Boolean = false,
     val webhookSaveStatus: String? = null,
+    // MySQL direct sync hub (BydMate_Mobile reads the same database). The defaults below come from
+    // BuildConfig, so a fresh install syncs without anyone typing on the head unit's keyboard;
+    // Settings still shows them as editable fields.
+    val mysqlEnabled: Boolean = true,
+    val mysqlHost: String = MysqlDefaults.HOST,
+    val mysqlPort: String = MysqlDefaults.PORT,
+    val mysqlUser: String = MysqlDefaults.USER,
+    val mysqlPassword: String = MysqlDefaults.PASSWORD,
+    val mysqlDatabase: String = MysqlDefaults.DATABASE,
+    val mysqlVehicleId: String = MysqlDefaults.VEHICLE_ID,
+    /** Ship this app's logcat lines to `app_logs`; on by default, since the head unit has no debugger. */
+    val mysqlLogsEnabled: Boolean = true,
+    /** Trigger level letter (V D I W E); lower lines ship only as context around a kept line. */
+    val mysqlLogLevel: String = "W",
+    val mysqlSaveStatus: String? = null,
+    val mysqlTestStatus: String? = null,
+    val mysqlSyncStatus: String? = null,
+    val mysqlBusy: Boolean = false,
+    val mysqlLastSyncTs: Long = 0L,
     /** Status of the last config backup/restore operation. Red if starts with error prefix. */
     val configStatus: String? = null,
     /** Backups offered by the restore picker, newest first. Null = picker closed. */
@@ -327,6 +348,7 @@ data class SettingsUiState(
 class SettingsViewModel @Inject @Suppress("LongParameterList") constructor( // Hilt-injected dependencies
     @ApplicationContext private val appContext: Context,
     private val settingsRepository: SettingsRepository,
+    private val mysqlSyncRepository: com.bydmate.app.data.mysql.MysqlSyncRepository,
     private val tripRepository: TripRepository,
     private val chargeRepository: ChargeRepository,
     private val updateChecker: UpdateChecker,
@@ -552,6 +574,20 @@ class SettingsViewModel @Inject @Suppress("LongParameterList") constructor( // H
             val webhookUrl = settingsRepository.getString(SettingsRepository.KEY_WEBHOOK_URL, "")
             val webhookSecret = settingsRepository.getString(SettingsRepository.KEY_WEBHOOK_SECRET, "")
             val webhookSendLocation = settingsRepository.getString(SettingsRepository.KEY_WEBHOOK_SEND_LOCATION, "false") == "true"
+            // A stored blank means an older build saved nothing here, not that the driver cleared
+            // it deliberately, so the compiled-in hub defaults answer. The enable switch is the one
+            // value a stored "false" must win over: that is a driver turning sync off.
+            val mysqlEnabled = settingsRepository.getString(SettingsRepository.KEY_MYSQL_ENABLED, "true") != "false"
+            val mysqlHost = settingsRepository.getString(SettingsRepository.KEY_MYSQL_HOST, "").ifBlank { MysqlDefaults.HOST }
+            val mysqlPort = settingsRepository.getString(SettingsRepository.KEY_MYSQL_PORT, "").ifBlank { MysqlDefaults.PORT }
+            val mysqlUser = settingsRepository.getString(SettingsRepository.KEY_MYSQL_USER, "").ifBlank { MysqlDefaults.USER }
+            val mysqlPassword = settingsRepository.getString(SettingsRepository.KEY_MYSQL_PASSWORD, "").ifBlank { MysqlDefaults.PASSWORD }
+            val mysqlDatabase = settingsRepository.getString(SettingsRepository.KEY_MYSQL_DATABASE, "").ifBlank { MysqlDefaults.DATABASE }
+            val mysqlVehicleId = settingsRepository.getMysqlVehicleId()
+            val mysqlLastSyncTs = settingsRepository.getMysqlLastSyncTs()
+            val mysqlLogsEnabled =
+                settingsRepository.getString(SettingsRepository.KEY_MYSQL_LOGS_ENABLED, "true") == "true"
+            val mysqlLogLevel = settingsRepository.getString(SettingsRepository.KEY_MYSQL_LOG_LEVEL, "W")
             val mapTileSource = settingsRepository.getMapTileSource()
             // Never chosen here (a reinstall after an uninstall with the toggle on): show what the
             // system has, so switching the toggle off brings the assistant back. The service's
@@ -651,6 +687,16 @@ class SettingsViewModel @Inject @Suppress("LongParameterList") constructor( // H
                     webhookUrl = webhookUrl,
                     webhookSecret = webhookSecret,
                     webhookSendLocation = webhookSendLocation,
+                    mysqlEnabled = mysqlEnabled,
+                    mysqlHost = mysqlHost,
+                    mysqlPort = mysqlPort,
+                    mysqlUser = mysqlUser,
+                    mysqlPassword = mysqlPassword,
+                    mysqlDatabase = mysqlDatabase,
+                    mysqlVehicleId = mysqlVehicleId,
+                    mysqlLogsEnabled = mysqlLogsEnabled,
+                    mysqlLogLevel = mysqlLogLevel,
+                    mysqlLastSyncTs = mysqlLastSyncTs,
                     mapTileSource = mapTileSource,
                     disableNativeAssistant = disableNativeAssistant,
                     voiceEnabled = voiceEnabled,
@@ -1287,6 +1333,122 @@ class SettingsViewModel @Inject @Suppress("LongParameterList") constructor( // H
             }
             delay(2000)
             _uiState.update { it.copy(webhookSaveStatus = null) }
+        }
+    }
+
+    fun toggleMysql(enabled: Boolean) {
+        _uiState.update { it.copy(mysqlEnabled = enabled) }
+        viewModelScope.launch {
+            settingsRepository.setString(SettingsRepository.KEY_MYSQL_ENABLED, enabled.toString())
+        }
+    }
+
+    fun updateMysqlHost(value: String) = _uiState.update { it.copy(mysqlHost = value) }
+    fun updateMysqlPort(value: String) = _uiState.update { it.copy(mysqlPort = value.filter { c -> c.isDigit() }.take(5)) }
+    fun updateMysqlUser(value: String) = _uiState.update { it.copy(mysqlUser = value) }
+    fun updateMysqlPassword(value: String) = _uiState.update { it.copy(mysqlPassword = value) }
+    fun updateMysqlDatabase(value: String) = _uiState.update { it.copy(mysqlDatabase = value) }
+    fun updateMysqlVehicleId(value: String) = _uiState.update { it.copy(mysqlVehicleId = value) }
+
+    fun toggleMysqlLogs(enabled: Boolean) {
+        _uiState.update { it.copy(mysqlLogsEnabled = enabled) }
+        viewModelScope.launch {
+            settingsRepository.setString(SettingsRepository.KEY_MYSQL_LOGS_ENABLED, enabled.toString())
+        }
+    }
+
+    /** Takes effect on the next flush, no Save needed — a chip press is cheap and immediately useful. */
+    fun setMysqlLogLevel(level: String) {
+        _uiState.update { it.copy(mysqlLogLevel = level) }
+        viewModelScope.launch {
+            settingsRepository.setString(SettingsRepository.KEY_MYSQL_LOG_LEVEL, level)
+        }
+    }
+
+    /** The MySQL form as a config object, using either the given override or the current fields. */
+    private fun mysqlConfigFromState(password: String = _uiState.value.mysqlPassword) = MysqlConfig(
+        host = _uiState.value.mysqlHost.trim().ifEmpty { MysqlDefaults.HOST },
+        port = _uiState.value.mysqlPort.trim().toIntOrNull() ?: MysqlDefaults.PORT.toIntOrNull() ?: 0,
+        user = _uiState.value.mysqlUser.trim().ifEmpty { MysqlDefaults.USER },
+        password = password.ifBlank { MysqlDefaults.PASSWORD },
+        database = _uiState.value.mysqlDatabase.trim().ifEmpty { MysqlDefaults.DATABASE },
+        vehicleId = _uiState.value.mysqlVehicleId.trim().ifEmpty { MysqlDefaults.VEHICLE_ID },
+    )
+
+    fun saveMysqlSettings() {
+        val state = _uiState.value
+        val cfg = mysqlConfigFromState()
+        viewModelScope.launch {
+            if (cfg.host.isBlank() || cfg.user.isBlank()) {
+                _uiState.update { it.copy(mysqlSaveStatus = appStrings.get(R.string.settings_mysql_incomplete)) }
+                delay(2500)
+                _uiState.update { it.copy(mysqlSaveStatus = null) }
+                return@launch
+            }
+            settingsRepository.setStrings(
+                mapOf(
+                    SettingsRepository.KEY_MYSQL_HOST to cfg.host,
+                    SettingsRepository.KEY_MYSQL_PORT to cfg.port.toString(),
+                    SettingsRepository.KEY_MYSQL_USER to cfg.user,
+                    SettingsRepository.KEY_MYSQL_PASSWORD to state.mysqlPassword,
+                    SettingsRepository.KEY_MYSQL_DATABASE to cfg.database,
+                    SettingsRepository.KEY_MYSQL_VEHICLE_ID to cfg.vehicleId,
+                    SettingsRepository.KEY_MYSQL_ENABLED to state.mysqlEnabled.toString(),
+                )
+            )
+            _uiState.update {
+                it.copy(
+                    mysqlHost = cfg.host, mysqlPort = cfg.port.toString(), mysqlUser = cfg.user,
+                    mysqlDatabase = cfg.database, mysqlVehicleId = cfg.vehicleId,
+                    mysqlSaveStatus = appStrings.get(R.string.settings_saved),
+                )
+            }
+            delay(2000)
+            _uiState.update { it.copy(mysqlSaveStatus = null) }
+        }
+    }
+
+    fun testMysqlConnection() {
+        val cfg = mysqlConfigFromState()
+        if (!cfg.isComplete) {
+            _uiState.update { it.copy(mysqlTestStatus = appStrings.get(R.string.settings_mysql_incomplete)) }
+            viewModelScope.launch { delay(3000); _uiState.update { it.copy(mysqlTestStatus = null) } }
+            return
+        }
+        _uiState.update { it.copy(mysqlBusy = true, mysqlTestStatus = appStrings.get(R.string.settings_mysql_testing)) }
+        viewModelScope.launch {
+            val status = mysqlSyncRepository.test(cfg).fold(
+                onSuccess = { appStrings.get(R.string.settings_mysql_test_ok, it) },
+                onFailure = { appStrings.get(R.string.settings_mysql_test_fail, it.message ?: "?") },
+            )
+            _uiState.update { it.copy(mysqlBusy = false, mysqlTestStatus = status) }
+            delay(6000)
+            _uiState.update { it.copy(mysqlTestStatus = null) }
+        }
+    }
+
+    fun syncMysqlNow() {
+        val cfg = mysqlConfigFromState()
+        if (!cfg.isComplete) {
+            _uiState.update { it.copy(mysqlSyncStatus = appStrings.get(R.string.settings_mysql_incomplete)) }
+            viewModelScope.launch { delay(3000); _uiState.update { it.copy(mysqlSyncStatus = null) } }
+            return
+        }
+        _uiState.update { it.copy(mysqlBusy = true, mysqlSyncStatus = appStrings.get(R.string.settings_mysql_syncing)) }
+        viewModelScope.launch {
+            val status = mysqlSyncRepository.syncHistory().fold(
+                onSuccess = {
+                    settingsRepository.setMysqlLastSyncTs(System.currentTimeMillis())
+                    appStrings.get(
+                        R.string.settings_mysql_sync_ok,
+                        it.trips, it.charges, it.batterySnapshots, it.logs,
+                    )
+                },
+                onFailure = { appStrings.get(R.string.settings_mysql_sync_fail, it.message ?: "?") },
+            )
+            _uiState.update { it.copy(mysqlBusy = false, mysqlSyncStatus = status) }
+            delay(6000)
+            _uiState.update { it.copy(mysqlSyncStatus = null) }
         }
     }
 

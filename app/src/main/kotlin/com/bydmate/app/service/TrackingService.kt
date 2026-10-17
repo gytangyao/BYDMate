@@ -38,6 +38,7 @@ import com.bydmate.app.data.remote.DiParsData
 import com.bydmate.app.data.remote.IternioIntervalPolicy
 import com.bydmate.app.data.remote.IternioRateLimitException
 import com.bydmate.app.data.remote.IternioServerErrorException
+import com.bydmate.app.data.mysql.chargingTotals
 import com.bydmate.app.data.repository.SettingsRepository
 import com.bydmate.app.data.remote.IternioTelemetryClient
 import com.bydmate.app.data.remote.WebhookTelemetryClient
@@ -130,6 +131,8 @@ class TrackingService : Service(), LocationListener {
     @Inject lateinit var logRecorder: com.bydmate.app.diagnostics.LogRecorder
     @Inject lateinit var logTelegramSender: com.bydmate.app.diagnostics.LogTelegramSender
     @Inject lateinit var autoBackupScheduler: com.bydmate.app.data.backup.AutoBackupScheduler
+    @Inject lateinit var mysqlSyncScheduler: com.bydmate.app.data.mysql.MysqlSyncScheduler
+    @Inject lateinit var mysqlSyncRepository: com.bydmate.app.data.mysql.MysqlSyncRepository
     @Inject lateinit var postRestoreCheck: com.bydmate.app.data.backup.PostRestoreCheck
     @Inject lateinit var appStrings: com.bydmate.app.util.AppStrings
     @Inject lateinit var telegramReporter: com.bydmate.app.data.telegram.TelegramReporter
@@ -246,6 +249,17 @@ class TrackingService : Service(), LocationListener {
     // instead of one per second while driving.
     @Volatile private var webhookCooldownUntilMs: Long = 0L
 
+    // MySQL live-dashboard push: one car_state row per 30 s while the sampling loop runs, so the
+    // phone's "current" card stays fresh without hammering the hub on every 1 Hz tick.
+    @Volatile private var mysqlCarStateLastPushMs: Long = 0L
+    private val mysqlCarStateInFlight = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    // Lifetime charging figures ride the same row. Summing every logged session is a Room scan, so
+    // it is refreshed on its own slower cadence instead of once per dashboard push.
+    @Volatile private var mysqlAppChargedKwh: Double? = null
+    @Volatile private var mysqlNominalCapacityKwh: Double = 0.0
+    @Volatile private var mysqlTotalsLoadedAtMs: Long = 0L
+
     // onStartCommand calls since onCreate, main thread only: tells the start that created the
     // service apart from repeats on a running one in the trace.
     private var startCommands = 0
@@ -307,6 +321,10 @@ class TrackingService : Service(), LocationListener {
         // car/system toggles the settings screen edits.
         private const val QUIET_CHANNEL_ID = "bydmate_tracking_quiet"
         const val KEY_QUIET_NOTIFICATION = "quiet_notification"
+        /** How often the live `car_state` row is appended to the MySQL hub while sampling. */
+        private const val MYSQL_CAR_STATE_INTERVAL_MS = 30_000L
+        /** How often the lifetime-charging inputs behind that row are re-read from Room. */
+        private const val MYSQL_TOTALS_TTL_MS = 5 * 60_000L
         // Throttle autoservice gun-state read so we don't hit Binder/ADB on every
         // poll tick. 5 ticks ≈ 15 s — fast enough that the user sees a row
         // appear within ~half a minute of unplugging, gentle enough not to
@@ -902,6 +920,16 @@ class TrackingService : Service(), LocationListener {
             }
         }
 
+        // MySQL hub sync: push the car's trips/charges/battery rows to the shared DB at ignition,
+        // so the phone sees the latest records shortly after the driver starts the car.
+        serviceScope.launch {
+            try {
+                mysqlSyncScheduler.enqueueIfDue(this@TrackingService)
+            } catch (e: Exception) {
+                Log.w(TAG, "MySQL sync check failed: ${e.message}")
+            }
+        }
+
         // Autoservice catch-up: synthesizes COMPLETED ChargeEntity records for
         // charging that happened while DiLink was asleep. Runs in its OWN
         // coroutine, not chained after runSync(): a slow or throwing import
@@ -1400,6 +1428,84 @@ class TrackingService : Service(), LocationListener {
         }
     }
 
+    /**
+     * Appends one `car_state` row to the MySQL hub every [MYSQL_CAR_STATE_INTERVAL_MS] so the phone
+     * shows a near-live dashboard. Cheap to skip: when sync is disabled or a push is already in
+     * flight, or the interval hasn't elapsed, it returns without touching the network. SoH isn't a
+     * DiPars field, so the newest battery snapshot supplies it.
+     */
+    private fun maybePushMysqlCarState(data: DiParsData, nowMs: Long) {
+        if (!mysqlCarStateInFlight.compareAndSet(false, true)) return
+        if (nowMs - mysqlCarStateLastPushMs < MYSQL_CAR_STATE_INTERVAL_MS) {
+            mysqlCarStateInFlight.set(false)
+            return
+        }
+        serviceScope.launch {
+            try {
+                if (!mysqlSyncRepository.isEnabled()) return@launch
+                val sohPct = mysqlSyncRepository.latestSohPct()
+                val totals = chargingTotals(
+                    bmsLifetimeKwh = data.totalElecConsumption,
+                    appChargedKwh = appChargedKwhForMysql(nowMs),
+                    nominalCapacityKwh = nominalCapacityForMysql(nowMs, data.batteryCapacityKwh),
+                    sohPercent = sohPct,
+                )
+                val snapshot = com.bydmate.app.data.mysql.CarStateSnapshot(
+                    pushedAt = nowMs,
+                    socPct = data.soc?.toDouble(),
+                    rangeKm = data.evRangeKm?.toDouble(),
+                    sohPct = sohPct,
+                    battTempC = data.avgBatTemp?.toDouble(),
+                    cellVMax = data.maxCellVoltage,
+                    cellVMin = data.minCellVoltage,
+                    voltage12v = data.voltage12v,
+                    exteriorTempC = data.exteriorTemp?.toDouble(),
+                    cabinTempC = data.insideTemp?.toDouble(),
+                    odometerKm = data.mileage,
+                    totals = totals,
+                    rawJson = null,
+                )
+                mysqlSyncRepository.pushCarState(snapshot)
+                    .onSuccess { mysqlCarStateLastPushMs = nowMs }
+                    .onFailure { Log.w(TAG, "MySQL car_state: ${it.message}") }
+            } catch (e: Exception) {
+                Log.w(TAG, "MySQL car_state: ${e.message}")
+            } finally {
+                mysqlCarStateInFlight.set(false)
+            }
+        }
+    }
+
+    /**
+     * The app's own sum of logged charging sessions, the fallback when the car answers no lifetime
+     * counter. Every session is re-added because sessions end and get edited after the fact, but a
+     * full Room scan has no business running at the dashboard push's 30 s cadence.
+     */
+    private suspend fun appChargedKwhForMysql(nowMs: Long): Double? {
+        if (mysqlAppChargedKwh == null || nowMs - mysqlTotalsLoadedAtMs >= MYSQL_TOTALS_TTL_MS) {
+            val stats = runCatching { chargeRepository.getLifetimeStats() }.getOrNull() ?: return mysqlAppChargedKwh
+            mysqlAppChargedKwh = stats.totalKwhAdded
+            mysqlTotalsLoadedAtMs = nowMs
+        }
+        return mysqlAppChargedKwh
+    }
+
+    /**
+     * The divisor the head unit's «Полных циклов» row uses, so the phone and the dash agree. Falls
+     * back to the car's own reported pack capacity when nobody has set one — the stored default is
+     * another model's figure, and dividing by it would silently misreport cycles by several times.
+     */
+    private suspend fun nominalCapacityForMysql(nowMs: Long, carReportedKwh: Double?): Double {
+        if (mysqlNominalCapacityKwh <= 0.0 ||
+            nowMs - mysqlTotalsLoadedAtMs >= MYSQL_TOTALS_TTL_MS
+        ) {
+            mysqlNominalCapacityKwh = runCatching { settingsRepository.getBatteryCapacityOrNull() }.getOrNull()
+                ?: carReportedKwh
+                ?: 0.0
+        }
+        return mysqlNominalCapacityKwh
+    }
+
     override fun onDestroy() {
         Log.i(TAG, "onDestroy: stopping TrackingService")
         Trace.event(TraceArea.APP, "service-stop")
@@ -1756,6 +1862,7 @@ class TrackingService : Service(), LocationListener {
                     updateNotification(data)
                     maybeLogSessionSummary(nowMs, data, sessionId)
                     maybeSendIternioTelemetry(data, nowMs)
+                    maybePushMysqlCarState(data, nowMs)
 
                     // Native trip recorder (writes only when energydata absent — i.e. Song/Atto/non-Leopard3)
                     runCatching { tripRecorder.consume(data) }

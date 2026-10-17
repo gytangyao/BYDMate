@@ -58,6 +58,7 @@ class BatteryStateRepositoryTest {
         override suspend fun insert(snapshot: BatterySnapshotEntity): Long = 0
         override suspend fun getLast(): BatterySnapshotEntity? = lastValue
         override suspend fun getCount(): Int = 0
+        override suspend fun getAllSnapshot(): List<BatterySnapshotEntity> = emptyList()
     }
 
     private fun fakeBatteryHealth(last: BatterySnapshotEntity?): BatteryHealthRepository =

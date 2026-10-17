@@ -82,6 +82,7 @@ class AutoserviceChargingDetectorTest {
             }
             return before - inserted.size
         }
+        override suspend fun getAllSnapshot(): List<ChargeEntity> = inserted.toList()
         override suspend fun delete(charge: ChargeEntity) {
             inserted.removeAll { it.id == charge.id }
         }
@@ -131,6 +132,7 @@ class AutoserviceChargingDetectorTest {
             flowOf(emptyList())
         override suspend fun getLast(): com.bydmate.app.data.local.entity.BatterySnapshotEntity? = null
         override suspend fun getCount(): Int = inserted.size
+        override suspend fun getAllSnapshot(): List<com.bydmate.app.data.local.entity.BatterySnapshotEntity> = inserted.toList()
     }
 
     private data class TestSetup(

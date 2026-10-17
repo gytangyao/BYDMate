@@ -18,6 +18,10 @@ interface ChargeDao {
     @Query("SELECT * FROM charges ORDER BY start_ts DESC")
     fun getAll(): Flow<List<ChargeEntity>>
 
+    /** One-shot enumeration for the MySQL sync: every charge row, ascending. */
+    @Query("SELECT * FROM charges ORDER BY start_ts")
+    suspend fun getAllSnapshot(): List<ChargeEntity>
+
     @Query("SELECT * FROM charges WHERE id = :id")
     suspend fun getById(id: Long): ChargeEntity?
 

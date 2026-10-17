@@ -107,6 +107,7 @@ class ChargesViewModelTest {
         override suspend fun getMaxLifetimeKwhAtFinish(): Double? = null
         override suspend fun getAllAutoserviceCharges(): List<ChargeEntity> = autoserviceCharges
         override suspend fun hasLegacyCharges(): Boolean = legacyExists
+        override suspend fun getAllSnapshot(): List<ChargeEntity> = chargesFlow.value
         override suspend fun deleteEmpty(): Int {
             val before = chargesFlow.value
             val after = before.filter { it.kwhCharged != null && it.kwhCharged >= 0.05 }
@@ -142,6 +143,7 @@ class ChargesViewModelTest {
         override suspend fun insert(snapshot: BatterySnapshotEntity): Long = 0L
         override suspend fun getLast(): BatterySnapshotEntity? = snapshots.firstOrNull()
         override suspend fun getCount(): Int = snapshots.size
+        override suspend fun getAllSnapshot(): List<BatterySnapshotEntity> = snapshots
     }
 
     private class FakeAutoserviceClient(

@@ -63,3 +63,14 @@
 -keep class org.bouncycastle.jce.provider.** { *; }
 -dontwarn org.bouncycastle.**
 -dontwarn javax.naming.**
+
+# MySQL Connector/J: JDBC driver loads classes reflectively and references javax.xml APIs
+# that are not on Android's classpath. R8 strips what it thinks is unused; keep everything.
+-keep class com.mysql.** { *; }
+-dontwarn com.mysql.**
+-dontwarn javax.xml.**
+-dontwarn javax.management.**
+-dontwarn javax.naming.**
+-dontwarn javax.security.**
+-dontwarn javax.transaction.**
+-dontwarn javax.crypto.**

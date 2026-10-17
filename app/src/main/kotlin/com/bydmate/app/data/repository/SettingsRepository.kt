@@ -102,6 +102,32 @@ open class SettingsRepository @Inject constructor(
         const val KEY_WEBHOOK_SECRET = "webhook_secret"
         /** Отправлять GPS-координаты и курс на вебхук (opt-in, по умолчанию выкл). */
         const val KEY_WEBHOOK_SEND_LOCATION = "webhook_send_location"
+        // MySQL direct sync hub: the car upserts its Room rows into a shared MySQL the phone reads.
+        const val KEY_MYSQL_ENABLED = "mysql_enabled"
+        const val KEY_MYSQL_HOST = "mysql_host"
+        const val KEY_MYSQL_PORT = "mysql_port"
+        const val KEY_MYSQL_USER = "mysql_user"
+        const val KEY_MYSQL_PASSWORD = "mysql_password"
+        const val KEY_MYSQL_DATABASE = "mysql_database"
+        /** Tags every row the car writes; the phone is configured with the same value to read them. */
+        const val KEY_MYSQL_VEHICLE_ID = "mysql_vehicle_id"
+        /** Epoch ms of the last successful sync; 0 until the first run. Drives the incremental window. */
+        const val KEY_MYSQL_LAST_SYNC_TS = "mysql_last_sync_ts"
+        // Log shipping (app_logs). Off-switch for users who object to their log lines leaving the car.
+        const val KEY_MYSQL_LOGS_ENABLED = "mysql_logs_enabled"
+        /** Trigger level: V D I W E. Lines below it still ship as context around a kept line. */
+        const val KEY_MYSQL_LOG_LEVEL = "mysql_log_level"
+        /** Newest logcat timestamp already shipped; the collector only forwards lines after it. */
+        const val KEY_MYSQL_LOG_CURSOR_TS = "mysql_log_cursor_ts"
+        /** id of the CURRENT process run; the previous value labels a crashed run's tail. */
+        const val KEY_MYSQL_LOG_RUN_ID = "mysql_log_run_id"
+        /** When this process first flushed logs, for run attribution of older lines. */
+        const val KEY_MYSQL_LOG_RUN_START_TS = "mysql_log_run_start_ts"
+        /** Start of the current shipping day and how many rows went out in it. */
+        const val KEY_MYSQL_LOG_DAY_START_TS = "mysql_log_day_start_ts"
+        const val KEY_MYSQL_LOG_DAY_ROWS = "mysql_log_day_rows"
+        /** Earliest ts deleted by the last retention pass; a pass runs at most once a day. */
+        const val KEY_MYSQL_LOG_PRUNED_TS = "mysql_log_pruned_ts"
         // Automatic backup (#237). Period = AutoBackupPeriod.key; last_ts = 0 until the first export.
         const val KEY_AUTO_BACKUP_PERIOD = "auto_backup_period"
         const val KEY_AUTO_BACKUP_LAST_TS = "auto_backup_last_ts"
@@ -191,6 +217,8 @@ open class SettingsRepository @Inject constructor(
         const val DEFAULT_CONSUMPTION_GOOD = "20"
         const val DEFAULT_CONSUMPTION_BAD = "30"
         const val DEFAULT_MAP_TILE_SOURCE = "osm" // "osm" or "amap"
+        /** Fallback tag for the car's rows when the user left the vehicle id field blank. */
+        const val DEFAULT_MYSQL_VEHICLE_ID = "byd-1"
         const val RANGE_CALC_AUTO = "auto"
         const val RANGE_CALC_MANUAL = "manual"
         const val DEFAULT_RANGE_CALC_METHOD = RANGE_CALC_AUTO
@@ -252,6 +280,10 @@ open class SettingsRepository @Inject constructor(
 
     suspend fun getBatteryCapacity(): Double =
         getString(KEY_BATTERY_CAPACITY, DEFAULT_BATTERY_CAPACITY).parseNumericSetting() ?: 72.9
+
+    /** [getBatteryCapacity] without the built-in default: null when nobody set a pack size yet. */
+    suspend fun getBatteryCapacityOrNull(): Double? =
+        getString(KEY_BATTERY_CAPACITY, "").trim().ifEmpty { null }?.parseNumericSetting()
 
     suspend fun getHomeTariff(): Double =
         getString(KEY_HOME_TARIFF, DEFAULT_HOME_TARIFF).parseNumericSetting() ?: 0.20
@@ -363,6 +395,16 @@ open class SettingsRepository @Inject constructor(
 
     suspend fun setLastEnergyImportTs(ts: Long) =
         setString(KEY_LAST_ENERGYDATA_IMPORT_TS, ts.toString())
+
+    /** The vehicle tag this car writes; the phone is configured with the same value to read them back. */
+    suspend fun getMysqlVehicleId(): String =
+        getString(KEY_MYSQL_VEHICLE_ID, "").trim().ifEmpty { DEFAULT_MYSQL_VEHICLE_ID }
+
+    suspend fun getMysqlLastSyncTs(): Long =
+        getString(KEY_MYSQL_LAST_SYNC_TS, "0").toLongOrNull() ?: 0L
+
+    suspend fun setMysqlLastSyncTs(ts: Long) =
+        setString(KEY_MYSQL_LAST_SYNC_TS, ts.toString())
 
     suspend fun isSetupCompleted(): Boolean =
         getString(KEY_SETUP_COMPLETED, "false") == "true"

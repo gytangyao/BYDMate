@@ -19,6 +19,16 @@ val keystoreProps = Properties().apply {
     if (keystorePropsFile.exists()) load(FileInputStream(keystorePropsFile))
 }
 
+// The MySQL hub's connection defaults are compiled in so a fresh install works without typing
+// anything. They are read from the machine's own gradle.properties, never from a file inside this
+// folder (the folder syncs to the NAS, and this is a credential). A build machine that has none of
+// them produces an app whose Settings page is simply blank — same as before this existed.
+fun hubDefault(key: String, fallback: String): String =
+    (findProperty("bydmate.hub$key") as String?)?.takeIf { it.isNotBlank() } ?: fallback
+
+// A Java string literal, escaped: the password is a machine-generated blob that may hold quotes.
+fun lit(value: String): String = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
 android {
     namespace = "com.bydmate.app"
     compileSdk = 34
@@ -35,13 +45,20 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        buildConfigField("String", "HUB_HOST", lit(hubDefault("Host", "")))
+        buildConfigField("String", "HUB_PORT", lit(hubDefault("Port", "3306")))
+        buildConfigField("String", "HUB_USER", lit(hubDefault("User", "")))
+        buildConfigField("String", "HUB_PASSWORD", lit(hubDefault("Password", "")))
+        buildConfigField("String", "HUB_DATABASE", lit(hubDefault("Database", "bydmate")))
+        buildConfigField("String", "HUB_VEHICLE_ID", lit(hubDefault("VehicleId", "byd-1")))
+
         ndk { abiFilters += listOf("arm64-v8a") }  // DiLink is arm64-only; single ABI keeps sherpa-onnx native libs small
     }
 
     signingConfigs {
         if (keystorePropsFile.exists()) {
             create("release") {
-                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
                 storePassword = keystoreProps.getProperty("storePassword")
                 keyAlias = keystoreProps.getProperty("keyAlias")
                 keyPassword = keystoreProps.getProperty("keyPassword")
@@ -118,6 +135,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // MySQL Connector/J reaches for a few java.* APIs through surfaces DiLink's stripped
+        // runtime trims; desugaring backfills them so the driver loads on the head unit.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -191,6 +211,12 @@ dependencies {
 
     // OkHttp
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // MySQL direct sync hub: the car upserts trips/charges/battery rows into a shared MySQL
+    // that BydMate_Mobile reads. MariaDB's own driver mis-parses this server's DML OK-packet
+    // (SELECTs return, every INSERT hangs), so the official Connector/J is required.
+    implementation("com.mysql:mysql-connector-j:8.4.0")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     // osmdroid (maps)
     implementation("org.osmdroid:osmdroid-android:6.1.20")

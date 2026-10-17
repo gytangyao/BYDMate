@@ -172,6 +172,7 @@ class DashboardViewModelTest {
         override suspend fun getCompletedForPricing(until: Long): List<com.bydmate.app.data.local.entity.ChargeEntity> = emptyList()
         override suspend fun getWithMeterReading(): List<com.bydmate.app.data.local.entity.ChargeEntity> = emptyList()
         override suspend fun deletePhantomAutoserviceRows(): Int = 0
+        override suspend fun getAllSnapshot(): List<com.bydmate.app.data.local.entity.ChargeEntity> = emptyList()
         override suspend fun delete(charge: com.bydmate.app.data.local.entity.ChargeEntity) {}
     }
 
@@ -227,6 +228,7 @@ class DashboardViewModelTest {
         override suspend fun insert(snapshot: BatterySnapshotEntity): Long = 0L
         override suspend fun getLast(): BatterySnapshotEntity? = null
         override suspend fun getCount(): Int = 0
+        override suspend fun getAllSnapshot(): List<BatterySnapshotEntity> = emptyList()
     }
 
     // --- Fake AutoserviceClient ---

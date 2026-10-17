@@ -170,6 +170,7 @@ class SettingsViewModelConnectionsTest {
         override suspend fun getCompletedForPricing(until: Long): List<ChargeEntity> = emptyList()
         override suspend fun getWithMeterReading(): List<ChargeEntity> = emptyList()
         override suspend fun deletePhantomAutoserviceRows(): Int = 0
+        override suspend fun getAllSnapshot(): List<ChargeEntity> = emptyList()
         override suspend fun delete(charge: ChargeEntity) {}
     }
 
@@ -323,6 +324,7 @@ class SettingsViewModelConnectionsTest {
             clusterMusicBridge = mockk(relaxed = true),
             vehicleWriteLogDao = mockk(relaxed = true),
             vehicleKindMonitor = mockk(relaxed = true),
+            mysqlSyncRepository = mockk(relaxed = true),
         )
     }
 

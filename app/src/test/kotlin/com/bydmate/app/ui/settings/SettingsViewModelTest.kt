@@ -189,6 +189,7 @@ class SettingsViewModelTest {
         override suspend fun getCompletedForPricing(until: Long): List<ChargeEntity> = emptyList()
         override suspend fun getWithMeterReading(): List<ChargeEntity> = emptyList()
         override suspend fun deletePhantomAutoserviceRows(): Int = 0
+        override suspend fun getAllSnapshot(): List<ChargeEntity> = emptyList()
         override suspend fun delete(charge: ChargeEntity) {}
     }
 
@@ -221,6 +222,7 @@ class SettingsViewModelTest {
         override suspend fun insert(snapshot: BatterySnapshotEntity): Long = 0L
         override suspend fun getLast(): BatterySnapshotEntity? = null
         override suspend fun getCount(): Int = 0
+        override suspend fun getAllSnapshot(): List<BatterySnapshotEntity> = emptyList()
     }
 
     private class FakeAdbClient : AdbOnDeviceClient {
@@ -407,6 +409,7 @@ class SettingsViewModelTest {
             vehicleWriteLogDao = mockk(relaxed = true),
             vehicleKindMonitor = vehicleKind?.let { com.bydmate.app.data.nativestack.kindMonitor(it) }
                 ?: mockk(relaxed = true),
+            mysqlSyncRepository = mockk(relaxed = true),
         )
     }
 
