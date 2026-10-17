@@ -21,7 +21,7 @@ Split screen 1/3 and 2/3, navigation on the instrument cluster, Yandex Navigator
 
 Tested on Leopard 3 (Fangchengbao Tai 3), with support for Sea Lion 07, Song, Atto 3, Seal, Han and the DM-i and DM-o hybrids (Song Pro DM-i, Leopard 5, Leopard 8, Sealion 06). DiLink 3.0, 4.0, 5.0, 5.1, and firmware with the new UI7 interface (OTA V1.6).
 
-[Features](#features) | [Screenshots](#screenshots) | [Automation](#automation) | [Projection to cluster](#projection-to-cluster) | [HUD](#hud) | [Split screen](#split-screen) | [Voice AI Agent](#voice-ai-agent) | [AI Insights](#ai-insights) | [ABRP](#abrp-live-telemetry) | [Install](#install) | [Build](#build-from-source) | [Releases](https://github.com/AndyShaman/BYDMate/releases) | [Sponsor](SUPPORT.md)
+[Features](#features) | [Screenshots](#screenshots) | [Automation](#automation) | [Projection to cluster](#projection-to-cluster) | [HUD](#hud) | [Split screen](#split-screen) | [Voice AI Agent](#voice-ai-agent) | [AI Insights](#ai-insights) | [ABRP](#abrp-live-telemetry) | [Phone hub](#phone-companion-mysql-hub) | [Install](#install) | [Build](#build-from-source) | [Releases](https://github.com/AndyShaman/BYDMate/releases) | [Sponsor](SUPPORT.md)
 
 </div>
 
@@ -80,6 +80,7 @@ The main changes in version 4.0.0.
 | **Backup** | Configuration backup | Trips, charges, settings, and keys in one archive in Download, restore by parts, scheduled auto-save with a copy in your Telegram bot |
 | **Share** | Automation sharing | A rule saved to a file without phone numbers, contacts, or your places; import someone else's rule with a preview |
 | **Aa** | Text size | Normal, large, or extra large text on the app screens and in the voice agent windows |
+| **Hub** | Phone companion | Trips, charges, battery snapshots, live state and log lines are written into a MySQL server you own; the BydMate_Mobile phone app reads the same database. Log rows keep 30 days, automatically |
 
 ---
 
@@ -859,8 +860,26 @@ autoservice (command writes) ←  AutomationEngine   ←  Rules (Room DB)
 | ABRP live telemetry | abetterrouteplanner.com | SOC, power, speed, temperatures, odometer, tire pressure, charging status, battery capacity, SoH, kWh of the current charging session, car model (coordinates only with a separate toggle, for following the car from a phone) | only after entering a token |
 | Configuration copies to Telegram | api.telegram.org, your bot | the configuration archive with the chosen parts, and a message when the bot connects | only after connecting a bot |
 | Telemetry webhook | Settings → Integrations → Webhook | the same JSON as ABRP, POST to your URL every 1/8/30 s (driving/charging/parked); coordinates only with a separate toggle | off by default |
+| Phone hub (MySQL) | the MySQL server you type in Settings | trips, charges, battery snapshots, live state (SOC, range, temperatures, cell voltages, odometer, lifetime charged kWh, charge cycles), app log lines | only after you fill in the hub address; with no address the feature never touches the network |
 
 Without any keys entered, only the update check (GitHub) and map tiles when viewing a trip route leave the device, along with voice model downloads on your explicit request (github.com). API keys are stored locally in the app's database and are never sent anywhere except the provider itself.
+
+---
+
+## Phone Companion (MySQL Hub)
+
+The head unit can write its own data into a MySQL server **you** run, and the BydMate_Mobile app on your phone reads the same database. After you leave the car you get trips, charges, battery and live state on the phone without a laptop and without any third-party service in between. Host, database, user and password are typed in Settings → MySQL, or baked in at build time (see Build From Source).
+
+| What is written | How often | What happens on a repeat |
+|---|---|---|
+| Trips, charges, battery snapshots | once per ignition (skipped when the last successful run is under 5 min old), plus a manual "Sync now" | the whole set is re-upserted against the `(vehicle_id, id)` key — syncing the same trip a hundred times still leaves one row |
+| Live state | every 30 s while driving | append-only, the phone reads the newest 200 rows |
+| Log lines | carried along by both channels above | append-only; `source` is `car` or `phone`, both apps share this one table |
+
+- **Lifetime charged kWh and equivalent full cycles are computed by the car, not the phone.** The phone only ever reads the last 200 rows, so a sum it makes itself can never be a lifetime figure. The car prefers the BMS lifetime charging counter (`charged_scope=bms`) and falls back to the sessions this app recorded (`charged_scope=app`); the phone labels which of the two it is showing.
+- **Logs keep 30 days, on their own.** Every sync also drops expired log rows: at most 5 000 rows per statement, at most 10 statements in a row, the rest next time. The cutoff comes from the **database server's clock**, not the head unit's — a DiLink that has not corrected its time yet would otherwise delete everything or nothing, silently, and nobody would notice. The car prunes the phone's rows too; the phone only ever writes, so that table would grow forever otherwise.
+- **One connection, always.** A permit gate inside the app means this process holds at most one hub session at a time (the server reaps idle ones after 45 s as a backstop), and every statement is bounded by `LIMIT` or by chunking, so a sync cannot squat on that session.
+- The schema is `db/schema.sql`; one run creates all five tables. The hub account needs `SELECT / INSERT / UPDATE / DELETE` only — no CREATE or ALTER.
 
 ---
 
@@ -1104,6 +1123,21 @@ git clone https://github.com/AndyShaman/BYDMate.git
 cd BYDMate
 ./gradlew assembleDebug
 ```
+
+**Release signing**: put a `keystore.properties` in the repo root with `storeFile`, `storePassword`, `keyAlias`, `keyPassword`. That file and the `.jks` are gitignored, so they never reach the repository; without them `assembleRelease` fails outright, while `assembleDebug` is unaffected.
+
+**Hub defaults at build time**: to install and sync without typing anything into Settings, add these to your machine's own `~/.gradle/gradle.properties` (Windows: `%USERPROFILE%\.gradle\gradle.properties`):
+
+```properties
+bydmate.hubHost=your MySQL host
+bydmate.hubPort=3306
+bydmate.hubUser=an account with SELECT/INSERT/UPDATE/DELETE only
+bydmate.hubPassword=that account's password
+bydmate.hubDatabase=bydmate
+bydmate.hubVehicleId=byd-1
+```
+
+These live only in the build machine's user properties and never in a file inside the repository, because one of them is a password. Building without them works the same way; the Settings page just starts empty.
 
 ---
 

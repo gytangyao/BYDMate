@@ -21,7 +21,7 @@
 
 已在 Leopard 3（方程豹豹3）上测试，支持 Sea Lion 07、Song、Atto 3、Seal、Han，以及 DM-i 和 DM-o 混动车型（Song Pro DM-i、Leopard 5、Leopard 8、Sealion 06）。适配 DiLink 3.0、4.0、5.0、5.1 及搭载新版 UI7 界面的固件（OTA V1.6）。
 
-[功能](#功能) | [截图](#截图) | [自动化](#自动化) | [投射到仪表盘](#投射到仪表盘) | [HUD](#hud) | [分屏](#分屏) | [语音AI助手](#语音ai助手) | [AI 洞察](#ai-洞察) | [ABRP](#abrp实时遥测) | [安装](#安装) | [编译](#从源码编译) | [发布](https://github.com/AndyShaman/BYDMate/releases) | [赞助](SUPPORT.md)
+[功能](#功能) | [截图](#截图) | [自动化](#自动化) | [投射到仪表盘](#投射到仪表盘) | [HUD](#hud) | [分屏](#分屏) | [语音AI助手](#语音ai助手) | [AI 洞察](#ai-洞察) | [ABRP](#abrp实时遥测) | [手机看车](#手机远程看车mysql-中转库) | [安装](#安装) | [编译](#从源码编译) | [发布](https://github.com/AndyShaman/BYDMate/releases) | [赞助](SUPPORT.md)
 
 </div>
 
@@ -80,6 +80,7 @@
 | **Backup** | 保存配置 | 行程、充电记录、设置和密钥打包成一个压缩包保存到 Download，可分部分恢复，支持按计划自动保存并发送到你的 Telegram 机器人 |
 | **Share** | 自动化分享 | 把规则保存为文件，不含电话号码、联系人和地点；导入他人规则前可先预览 |
 | **Aa** | 文字大小 | 应用界面和语音助手窗口的文字可选标准、大或特大 |
+| **Hub** | 手机远程看车 | 行程、充电、电池快照、实时状态和日志写入你自己的一台 MySQL，手机上的 BydMate_Mobile 读同一个库；日志自动只保留 30 天 |
 
 ---
 
@@ -852,8 +853,26 @@ autoservice (命令写入)         ←  AutomationEngine   ←  Rules (Room DB)
 | ABRP 实时遥测 | abetterrouteplanner.com | SOC、功率、车速、各项温度、里程、胎压、充电状态、电池容量、SoH、本次充电的 kWh、车型（坐标只有单独开关开启时才发送，用于在手机上查看车辆位置） | 仅在输入令牌后 |
 | Telegram 配置备份 | api.telegram.org、你的机器人 | 你选择包含的配置压缩包，以及连接机器人时的一条消息 | 仅在连接机器人后 |
 | 遥测 Webhook | 设置 → 集成 → Webhook | 和发给 ABRP 一样的 JSON，每 1/8/30 秒 POST 到你的地址一次（行驶/充电/停车）；坐标只有单独开关开启时才发送 | 默认关闭 |
+| 手机中转库（MySQL） | 你在设置里填的那台 MySQL 服务器 | 行程、充电记录、电池快照、实时状态（SOC、续航、温度、单体电压、里程、累计充入、循环次数）、应用日志文本 | 仅在填了中转库地址之后；不填就完全不联网 |
 
 没有填入任何密钥的情况下，只有更新检查（GitHub）、查看行程路线时的地图瓦片，以及用户主动请求下载语音模型（github.com）会离开车机。API 密钥只保存在应用本地的数据库里，除了发给对应的服务商本身，不会传到任何地方。
+
+---
+
+## 手机远程看车（MySQL 中转库）
+
+车机可以把自己的数据写进一台你自己掌握的 MySQL，手机上的 BydMate_Mobile 读同一个库。下车后不用带电脑、也不经过任何第三方服务，就能在手机上看到行程、充电、电池和实时状态。地址、库名、账号都在「设置 → MySQL」里填，也可以编译时给好默认值（见〈从源码编译〉）。
+
+| 写入的内容 | 频率 | 重复写入会怎样 |
+|---|---|---|
+| 行程、充电、电池快照 | 每次点火后一次（距上次成功不足 5 分钟则跳过），也可在设置里「立即同步」 | 主键是（车辆标识, 记录 id），整表重新 upsert，同一条记录同步一百遍也还是一行 |
+| 实时状态 | 行驶中每 30 秒 | 只追加新行，手机读最近 200 行 |
+| 应用日志 | 跟着上面两条通道一起走 | 只追加；`source` 分别是 `car` 和 `phone`，两个应用共用这一张表 |
+
+- **累计充入电量和满循环次数由车机算好后写进库**，手机不自己算：手机最多只能读到最近 200 行，用它求和永远得不到全生命周期的数字。优先取 BMS 的全生命周期充电计数（`charged_scope=bms`），取不到才用本应用记录到的充电会话之和（`charged_scope=app`），手机上的标签会如实写出是哪一种。
+- **日志只保留 30 天**：每次同步顺带清理过期日志，一条语句最多删 5000 行、最多连着删 10 次，剩下的下次再删。过期时间由数据库服务器的时钟算，而不是车机时钟——车机刚上电、时间还没校准时算错的话，要么一行都不删、要么一次删光，而且没人会注意到。车机也负责清理手机写进去的那些行，否则手机只写不删，这张表会一直涨。
+- **只占一条连接**：应用内有一道闸门，同一时刻最多一条到中转库的会话（服务端另有 45 秒空闲回收兜底）。每条语句都用 `LIMIT` 或分块限行，一次同步不会把这条连接长时间占住。
+- 建库脚本在 `db/schema.sql`，跑一遍就建好五张表；中转库账号只需要 `SELECT / INSERT / UPDATE / DELETE`，不需要建表和改表权限。
 
 ---
 ## 安装
@@ -1095,6 +1114,21 @@ git clone https://github.com/AndyShaman/BYDMate.git
 cd BYDMate
 ./gradlew assembleDebug
 ```
+
+**发布版签名**：仓库根目录放一个 `keystore.properties`，内容是 `storeFile` / `storePassword` / `keyAlias` / `keyPassword` 四项（这个文件和 `.jks` 都被 `.gitignore` 排除，不会进版本库）。没有它 `assembleRelease` 会直接失败，`assembleDebug` 不受影响。
+
+**编译时给中转库填默认值**：想让装好就同步、不必在设置里手敲，就在你机器全局的 `~/.gradle/gradle.properties`（Windows 是 `%USERPROFILE%\.gradle\gradle.properties`）里写：
+
+```properties
+bydmate.hubHost=你的 MySQL 地址
+bydmate.hubPort=3306
+bydmate.hubUser=只有 SELECT/INSERT/UPDATE/DELETE 权限的账号
+bydmate.hubPassword=该账号的口令
+bydmate.hubDatabase=bydmate
+bydmate.hubVehicleId=byd-1
+```
+
+这些值只进你编译机器的用户属性，绝不写进仓库里的任何文件——它们包含口令。没有这些属性时编译照常，只是设置的 MySQL 各栏是空的。
 
 ---
 
