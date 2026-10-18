@@ -39,6 +39,7 @@ import com.bydmate.app.data.remote.IternioIntervalPolicy
 import com.bydmate.app.data.remote.IternioRateLimitException
 import com.bydmate.app.data.remote.IternioServerErrorException
 import com.bydmate.app.data.mysql.chargingTotals
+import com.bydmate.app.data.mysql.resolveSohPct
 import com.bydmate.app.data.repository.SettingsRepository
 import com.bydmate.app.data.remote.IternioTelemetryClient
 import com.bydmate.app.data.remote.WebhookTelemetryClient
@@ -1432,7 +1433,8 @@ class TrackingService : Service(), LocationListener {
      * Appends one `car_state` row to the MySQL hub every [MYSQL_CAR_STATE_INTERVAL_MS] so the phone
      * shows a near-live dashboard. Cheap to skip: when sync is disabled or a push is already in
      * flight, or the interval hasn't elapsed, it returns without touching the network. SoH isn't a
-     * DiPars field, so the newest battery snapshot supplies it.
+     * DiPars field, so it comes from the BMS's own `soh` fid — one read per push — with the newest
+     * battery snapshot behind it for the seconds that fid answers a sentinel.
      */
     private fun maybePushMysqlCarState(data: DiParsData, nowMs: Long) {
         if (!mysqlCarStateInFlight.compareAndSet(false, true)) return
@@ -1443,7 +1445,10 @@ class TrackingService : Service(), LocationListener {
         serviceScope.launch {
             try {
                 if (!mysqlSyncRepository.isEnabled()) return@launch
-                val sohPct = mysqlSyncRepository.latestSohPct()
+                val sohPct = resolveSohPct(
+                    liveBmsSohPercent = runCatching { autoserviceClient.readSohPercent() }.getOrNull(),
+                    newestSnapshotSohPercent = mysqlSyncRepository.latestSohPct(),
+                )
                 val totals = chargingTotals(
                     bmsLifetimeKwh = data.totalElecConsumption,
                     appChargedKwh = appChargedKwhForMysql(nowMs),

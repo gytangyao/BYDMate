@@ -39,6 +39,7 @@ class AutoserviceChargingDetectorTest {
         override suspend fun getFloat(dev: Int, fid: Int): Float? = null
         override suspend fun readBatterySnapshot(): BatteryReading? = battery
         override suspend fun readChargingSnapshot(): ChargingReading? = charging
+        override suspend fun readSohPercent(): Float? = battery?.sohPercent
         override suspend fun getEnginePowerKw(): Int? = null
     }
 

@@ -28,6 +28,14 @@ interface AutoserviceClient {
     suspend fun readChargingSnapshot(): ChargingReading?
 
     /**
+     * Live state-of-health percentage from the BMS's `soh` fid — one read, not a whole
+     * [BatteryReading]. [readBatterySnapshot] costs five fids and is only worth taking inside the
+     * charging window, so anything that merely displays SoH (the hub's 30 s dashboard push) uses
+     * this instead. Null on sentinel/ADB/parse failure, like every other read here.
+     */
+    suspend fun readSohPercent(): Float?
+
+    /**
      * Live battery power in kW from autoservice ENG_POW. Single-read wrapper
      * over getInt — IternioTelemetryClient applies the [-300, +500] sanity
      * envelope, so this returns the raw decoded value or null on
@@ -153,6 +161,11 @@ class AutoserviceClientImpl @Inject constructor(
     override suspend fun getEnginePowerKw(): Int? {
         if (!adb.isConnected()) return null
         return getInt("power")
+    }
+
+    override suspend fun readSohPercent(): Float? {
+        if (!adb.isConnected()) return null
+        return getInt("soh")?.toFloat()
     }
 
     override suspend fun readChargingSnapshot(): ChargingReading? {
