@@ -40,8 +40,10 @@ android {
         // on DiLink Android 12 (requestLegacyExternalStorage works).
         // targetSdk 30+ would break listFiles() on /storage/emulated/0/energydata/
         targetSdk = 29
-        versionCode = 508
-        versionName = "4.0.1"
+        // Both must move with anything that ships: an APK whose version matches the previous one
+        // cannot be told apart on the head unit after an install, and the hub logs carry no build id.
+        versionCode = 509
+        versionName = "4.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -82,7 +84,7 @@ android {
         val variant = this
         variant.outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            output.outputFileName = "BYDMate-v${variant.versionName}.apk"
+            output.outputFileName = "BYDMate-v${variant.versionName}-${variant.versionCode}.apk"
         }
     }
 
