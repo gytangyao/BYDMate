@@ -28,10 +28,15 @@ class LogShippingTest {
         assertTrue(parsed[0].ts > 0L)
     }
 
+    /**
+     * The column order `logcat -v uid -v year` actually prints on the head unit: uid after the
+     * timestamp, not before it. Assuming the other order made every line of every first-variant
+     * dump unmatchable, so the collector silently fell back to the second variant.
+     */
     @Test
-    fun `keeps a uid-prefixed line and drops another app's`() {
-        val ours = "10123 2026-10-17 12:00:00.000 4321 9999 E MysqlSync: sync failed"
-        val theirs = "10089 2026-10-17 12:00:00.100 8181 8181 E SystemUI: boom"
+    fun `the uid column sits between the time and the pid`() {
+        val ours = "2026-10-17 12:00:00.000 10123 4321 9999 E MysqlSync: sync failed"
+        val theirs = "2026-10-17 12:00:00.100 10089 8181 8181 E SystemUI: boom"
         val parsed = LogcatLogFormat.collapse(listOf(ours, theirs), uid, pid, 2000)
         assertEquals(1, parsed.size)
         assertEquals("MysqlSync", parsed[0].tag)
@@ -54,7 +59,7 @@ class LogShippingTest {
     fun `does not steal a foreign trace tail`() {
         val lines = listOf(
             ours("E", "TripTracker", "boom"),
-            "10089 10-17 12:00:00.500 8181 8181 E SystemUI: theirs",
+            "10-17 12:00:00.500 10089 8181 8181 E SystemUI: theirs",
             "\tat android.view.View.draw(View.java:1)",
         )
         val parsed = LogcatLogFormat.collapse(lines, uid, pid, 2000)

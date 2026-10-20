@@ -1,6 +1,7 @@
 package com.bydmate.app.data.mysql
 
 import android.util.Log
+import com.bydmate.app.data.charging.CatchUpJournal
 import com.bydmate.app.data.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -41,10 +42,16 @@ data class MysqlLogRecord(
  * Volume is the risk: the 1 Hz sampling loop alone can print thousands of lines an hour. Three
  * limits hold it down — the level threshold (default WARN), a context window around every kept
  * line, and per-flush ([MAX_FLUSH_ROWS]) / per-day ([MAX_DAY_ROWS]) row caps.
+ *
+ * The threshold is also the blind spot: a verdict the driver needs is usually INFO, and INFO only
+ * survives as context under a WARN. So one thing bypasses logcat — [CatchUpJournal], the ring of
+ * charging decisions the detector keeps in prefs, ships whole whenever it changes
+ * ([chargeJournalBatch]).
  */
 @Singleton
 class CarLogCollector @Inject constructor(
     private val settingsRepository: SettingsRepository,
+    private val journal: CatchUpJournal,
 ) {
     /** Seam for tests, mirroring [com.bydmate.app.diagnostics.LogRecorder]: a canned dump, no device. */
     var exec: (Array<String>) -> Process = { Runtime.getRuntime().exec(it) }
@@ -56,6 +63,10 @@ class CarLogCollector @Inject constructor(
 
     @Volatile private var lastMarkerMs = 0L
 
+    /** Verdicts the hub has this ring for, and the set this flush offered: only a confirmed write moves the former. */
+    @Volatile private var journalSentVerdicts: List<String>? = null
+    @Volatile private var journalPendingVerdicts: List<String>? = null
+
     /**
      * New lines ready to ship, oldest first, already redacted. Empty when shipping is off or nothing
      * notable was written since the last flush. Call [markShipped] only once the rows are in MySQL:
@@ -63,25 +74,31 @@ class CarLogCollector @Inject constructor(
      */
     suspend fun pendingBatch(): List<MysqlLogRecord> = withContext(Dispatchers.IO) {
         if (!enabled()) return@withContext emptyList()
+        val rows = logcatBatch() + chargeJournalBatch()
+        // Stamping claims a run id in prefs, so an empty flush must not reach it.
+        if (rows.isEmpty()) emptyList() else stampRuns(rows)
+    }
+
+    private suspend fun logcatBatch(): List<MysqlLogRecord> {
         val now = System.currentTimeMillis()
         val cursor = longPref(SettingsRepository.KEY_MYSQL_LOG_CURSOR_TS)
         val budget = dailyBudget(now)
-        if (budget <= 0) return@withContext capMarker(now)
+        if (budget <= 0) return capMarker(now)
 
         val minRank = LogcatLogFormat.rank(settingsRepository.getString(SettingsRepository.KEY_MYSQL_LOG_LEVEL, DEFAULT_LEVEL))
         val parsed = dump().filter { it.ts > cursor && it.ts <= now + CLOCK_SLACK_MS }
-        if (parsed.isEmpty()) return@withContext emptyList()
+        if (parsed.isEmpty()) return emptyList()
 
         val kept = LogcatLogFormat.selectWithContext(parsed, minRank, CONTEXT_LINES)
         // Nothing crossed the threshold, but the window has been read: park the cursor there so the
         // next dump starts after it instead of re-parsing the same 800 lines every 30 s.
         if (kept.isEmpty()) {
             settingsRepository.setString(SettingsRepository.KEY_MYSQL_LOG_CURSOR_TS, parsed.last().ts.toString())
-            return@withContext emptyList()
+            return emptyList()
         }
         val limited = kept.take(minOf(MAX_FLUSH_ROWS, budget))
-        val rows = stampRuns(limited)
-        if (kept.size > limited.size) rows + listOfNotNull(overflowMarker(now, kept.size, rows.size)) else rows
+        return if (kept.size > limited.size) limited + listOfNotNull(overflowMarker(now, kept.size, limited.size))
+        else limited
     }
 
     /** Advance the cursor and today's row counter after the rows are safely in MySQL. */
@@ -101,6 +118,49 @@ class CarLogCollector @Inject constructor(
             values[SettingsRepository.KEY_MYSQL_LOG_DAY_ROWS] = (intPref(SettingsRepository.KEY_MYSQL_LOG_DAY_ROWS) + real.size).toString()
         }
         settingsRepository.setStrings(values)
+        if (batch.any { it.tag == JOURNAL_TAG }) journalSentVerdicts = journalPendingVerdicts
+    }
+
+    /**
+     * The catch-up verdicts, as one line whenever they change.
+     *
+     * `runCatchUp` says exactly why a charge produced no row — `NO_DELTA soc=98 prev=98`,
+     * `STILL_CHARGING gun=1`, `autoservice client not available` — but it says it at INFO, and the
+     * threshold is WARN: an INFO line only reaches the hub when it happens to sit within
+     * [CONTEXT_LINES] of something that warns, and this car writes ~30 log lines a second. Three days
+     * of charging that produced no rows produced not one detector line in `app_logs` either (2026-10-20),
+     * which is why the cause could not be read from the cloud. [CatchUpJournal] holds the same
+     * verdicts in prefs, does not rotate, and collapses repeats — so the ring ships, and one row
+     * carries the whole explanation.
+     */
+    private suspend fun chargeJournalBatch(): List<MysqlLogRecord> {
+        val entries = journal.entries()
+        if (entries.isEmpty()) return emptyList()
+        val verdicts = entries.map { CatchUpJournal.verdictOf(it) }
+        if (verdicts == journalSentVerdicts) return emptyList()
+        journalPendingVerdicts = verdicts
+        return listOf(
+            MysqlLogRecord(
+                ts = System.currentTimeMillis(),
+                level = "I",
+                tag = JOURNAL_TAG,
+                msg = LogRedactor.redact(journalMsg(entries)),
+                marker = true,
+            )
+        )
+    }
+
+    /** Newest verdicts that fit `app_logs.msg`, oldest first: the tail of the ring is the story. */
+    private fun journalMsg(entries: List<String>): String {
+        val kept = ArrayDeque<String>()
+        var used = JOURNAL_PREFIX.length
+        for (entry in entries.asReversed()) {
+            val cost = entry.length + if (kept.isEmpty()) 0 else JOURNAL_SEPARATOR.length
+            if (used + cost > MysqlUpsertSql.MAX_LOG_MSG_CHARS) break
+            kept.addFirst(entry)
+            used += cost
+        }
+        return JOURNAL_PREFIX + kept.joinToString(JOURNAL_SEPARATOR)
     }
 
     private suspend fun dump(): List<ParsedLog> {
@@ -207,6 +267,11 @@ class CarLogCollector @Inject constructor(
 
         /** The head unit's clock can lead the log buffer by seconds just after boot. */
         private const val CLOCK_SLACK_MS = 60_000L
+
+        /** Same tag the detector logs under, so one query finds both its lines and the shipped ring. */
+        internal const val JOURNAL_TAG = "AutoserviceDetector"
+        private const val JOURNAL_PREFIX = "catch-up verdicts: "
+        private const val JOURNAL_SEPARATOR = " | "
 
         /** `-t` bounds the dump: newest lines are the interesting ones and the ring is ~256 KB. */
         internal val LOGCAT_ARG_VARIANTS = arrayOf(

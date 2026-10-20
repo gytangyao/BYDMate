@@ -12,9 +12,9 @@ internal data class ParsedLog(val ts: Long, val level: String, val tag: String, 
  * [ParsedLog]s — kept separate from [CarLogCollector] because the device ring cannot be
  * produced in a test, while every rule below can.
  *
- * `uid` and `year` are optional prefixes/suffixes rather than expected columns: not every vendor
- * build accepts those modifiers, and the collector falls back to a variant that doesn't print
- * them. Absent columns simply disable the corresponding filter, they never lose the line.
+ * `uid` and `year` are optional columns rather than expected ones: not every vendor build accepts
+ * those modifiers, and the collector falls back to a variant that doesn't print them. Absent columns
+ * simply disable the corresponding filter, they never lose the line.
  */
 internal object LogcatLogFormat {
 
@@ -32,13 +32,18 @@ internal object LogcatLogFormat {
         .toFormatter()
 
     /**
-     * threadtime is `MM-dd HH:mm:ss.SSS  PID TID L TAG: msg`; `uid` prefixes it and `year`
-     * lengthens the date. Both groups optional, so one regex covers every variant.
+     * threadtime is `MM-dd HH:mm:ss.SSS  PID TID L TAG: msg`; `uid` inserts the logging process's uid
+     * BETWEEN THE TIMESTAMP AND THE PID and `year` lengthens the date. Both optional, so one regex
+     * covers every variant. The uid group has to sit after the time, not before the date: the
+     * head unit answered every `-v uid` dump with ~900 lines that matched nothing, which threw the
+     * whole first variant away (hub log 2026-10-20: `logcat gave 891 lines, none matched the header
+     * format` once per flush).
      */
     private val HEADER = Regex(
-        """^(?:(\d{1,9})\s+)?""" +
+        """^""" +
             """(\d{4}-\d{2}-\d{2}|\d{2}-\d{2})\s+""" +
             """(\d{2}:\d{2}:\d{2}\.\d{3})\s+""" +
+            """(?:(\d{1,9})\s+)?""" +
             """(\d{1,7})\s+(\d{1,7})\s+""" +
             """([VDIWEAFS])\s+""" +
             """([^:]{1,64}):\s?(.*)$"""
@@ -109,14 +114,14 @@ internal object LogcatLogFormat {
     private fun parseHeader(line: String, myUid: Int, myPid: Int): ParsedLog? {
         val m = HEADER.matchEntire(line) ?: return null
         val g = m.groupValues
-        val uid = g[1].toIntOrNull()
+        val uid = g[3].toIntOrNull()
         val pid = g[4].toIntOrNull()
         if (uid != null) {
             if (uid != myUid) return null
         } else if (pid != myPid) {
             return null
         }
-        val ts = toEpochMs(g[2], g[3]) ?: return null
+        val ts = toEpochMs(g[1], g[2]) ?: return null
         return ParsedLog(ts = ts, level = g[6], tag = g[7].trim(), msg = g[8])
     }
 

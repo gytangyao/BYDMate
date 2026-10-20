@@ -28,6 +28,17 @@ class CatchUpJournal @Inject constructor(
         // "yyyy-MM-dd HH:mm:ss " prefix length — payload starts here.
         private const val TS_PREFIX_LEN = 20
         private val REPEAT_SUFFIX = Regex(""" \(x(\d+)\)$""")
+
+        /**
+         * An entry stripped of its timestamp and of the `(xN)` a repeated decision grows: two entries
+         * that differ only in WHEN the same decision was written describe the same state of the
+         * detector. A consumer shipping the ring on change must not mistake the clock, or a gun that
+         * stayed connected for an hour, for a new verdict.
+         */
+        fun verdictOf(entry: String): String {
+            val payload = if (entry.length > TS_PREFIX_LEN) entry.substring(TS_PREFIX_LEN) else entry
+            return REPEAT_SUFFIX.replace(payload, "")
+        }
     }
 
     suspend fun append(payload: String, now: Long = System.currentTimeMillis()) {
@@ -54,4 +65,7 @@ class CatchUpJournal @Inject constructor(
 
     suspend fun read(): String =
         settings.getString(SettingsRepository.KEY_CATCHUP_JOURNAL, "")
+
+    /** The ring as written, oldest first, one entry per line, timestamps included. */
+    suspend fun entries(): List<String> = read().lines().filter { it.isNotBlank() }
 }
