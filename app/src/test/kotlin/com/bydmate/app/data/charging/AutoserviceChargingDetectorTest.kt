@@ -40,6 +40,7 @@ class AutoserviceChargingDetectorTest {
         override suspend fun readBatterySnapshot(): BatteryReading? = battery
         override suspend fun readChargingSnapshot(): ChargingReading? = charging
         override suspend fun readSohPercent(): Float? = battery?.sohPercent
+        override suspend fun readExtraFids(): Map<String, Double> = emptyMap()
         override suspend fun getEnginePowerKw(): Int? = null
     }
 
@@ -94,6 +95,7 @@ class AutoserviceChargingDetectorTest {
     private object NullChargePointDao : com.bydmate.app.data.local.dao.ChargePointDao {
         override suspend fun insertAll(points: List<ChargePointEntity>) {}
         override suspend fun getByChargeId(chargeId: Long): List<ChargePointEntity> = emptyList()
+        override suspend fun getForSync(chargeId: Long, pointId: Long, limit: Int): List<ChargePointEntity> = emptyList()
         override suspend fun getCount(): Int = 0
         override suspend fun thinOldPoints(cutoff: Long, intervalMs: Long): Int = 0
     }

@@ -125,6 +125,7 @@ class DashboardViewModelTest {
         override suspend fun insertAll(points: List<TripPointEntity>) {}
         override suspend fun getByTripId(tripId: Long): List<TripPointEntity> = emptyList()
         override suspend fun getByTripIds(tripIds: List<Long>): List<TripPointEntity> = emptyList()
+        override suspend fun getForSync(tripId: Long, pointId: Long, limit: Int): List<TripPointEntity> = emptyList()
         override suspend fun getCount(): Int = 0
         override suspend fun getAll(): List<TripPointEntity> = emptyList()
         override suspend fun thinOldPoints(cutoff: Long, intervalMs: Long): Int = 0

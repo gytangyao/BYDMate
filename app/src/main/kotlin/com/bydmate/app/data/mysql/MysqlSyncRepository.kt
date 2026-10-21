@@ -3,18 +3,25 @@ package com.bydmate.app.data.mysql
 import android.util.Log
 import com.bydmate.app.data.local.dao.BatterySnapshotDao
 import com.bydmate.app.data.local.dao.ChargeDao
+import com.bydmate.app.data.local.dao.ChargePointDao
+import com.bydmate.app.data.local.dao.CounterSnapshotDao
+import com.bydmate.app.data.local.dao.IdleDrainDao
+import com.bydmate.app.data.local.dao.RuleLogDao
 import com.bydmate.app.data.local.dao.TripDao
+import com.bydmate.app.data.local.dao.TripPointDao
+import com.bydmate.app.data.local.dao.VehicleWriteLogDao
 import com.bydmate.app.data.repository.SettingsRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Glue between the car's Room database and the shared MySQL hub. Reads the connection settings,
- * enumerates every trip / charge / battery snapshot, collects the log lines the sampling loop has
- * printed, and hands them to [MysqlSyncClient] as one idempotent pass over one connection. The Room
- * tables carry no per-row mutation stamp, so the whole set is re-upserted each run — cheap for a
- * single car's history and it also propagates edits to already-finished trips (cost recalculated
- * after the fact).
+ * enumerates every trip / charge / battery snapshot, pages the append-only detail tables from
+ * their cursors, collects the log lines the sampling loop has printed, and hands them to
+ * [MysqlSyncClient] as one idempotent pass over one connection. Trips and charges carry no
+ * per-row mutation stamp, so that whole set is re-upserted each run — cheap for a single car's
+ * history, and it also propagates edits to already-finished trips (cost recalculated after the
+ * fact). Detail rows are append-only, so they ship once and only the cursor advances.
  */
 @Singleton
 class MysqlSyncRepository @Inject constructor(
@@ -22,6 +29,12 @@ class MysqlSyncRepository @Inject constructor(
     private val tripDao: TripDao,
     private val chargeDao: ChargeDao,
     private val batterySnapshotDao: BatterySnapshotDao,
+    private val tripPointDao: TripPointDao,
+    private val chargePointDao: ChargePointDao,
+    private val idleDrainDao: IdleDrainDao,
+    private val ruleLogDao: RuleLogDao,
+    private val vehicleWriteLogDao: VehicleWriteLogDao,
+    private val counterSnapshotDao: CounterSnapshotDao,
     private val logCollector: CarLogCollector,
     private val client: MysqlSyncClient,
 ) {
@@ -38,21 +51,64 @@ class MysqlSyncRepository @Inject constructor(
         val logs = logCollector.pendingBatch()
         val now = System.currentTimeMillis()
         val prune = pruneDue(now)
-        Log.i(TAG, "syncing ${trips.size} trips, ${charges.size} charges, ${snapshots.size} snapshots, ${logs.size} log lines")
+
+        val tripCursor = pairCursor(SettingsRepository.KEY_MYSQL_CURSOR_TRIP_POINTS)
+        val tripPoints = tripPointDao.getForSync(tripCursor.first, tripCursor.second, TRIP_POINTS_PER_SYNC)
+        val chargeCursor = pairCursor(SettingsRepository.KEY_MYSQL_CURSOR_CHARGE_POINTS)
+        val chargePoints = chargePointDao.getForSync(chargeCursor.first, chargeCursor.second, CHARGE_POINTS_PER_SYNC)
+        val ruleCursor = longCursor(SettingsRepository.KEY_MYSQL_CURSOR_RULE_LOGS)
+        val ruleLogs = ruleLogDao.getForSync(ruleCursor, RULE_LOGS_PER_SYNC)
+        val writeCursor = longCursor(SettingsRepository.KEY_MYSQL_CURSOR_VEHICLE_WRITES)
+        val vehicleWrites = vehicleWriteLogDao.getForSync(writeCursor, VEHICLE_WRITES_PER_SYNC)
+        val counterCursor = longCursor(SettingsRepository.KEY_MYSQL_CURSOR_COUNTER_SNAPSHOTS)
+        val counterSnapshots = counterSnapshotDao.getForSync(counterCursor, COUNTER_SNAPSHOTS_PER_SYNC)
+        // Rows of a drain are updated until it closes, so this table is re-upserted whole.
+        val idleDrains = idleDrainDao.getAll()
+
+        Log.i(
+            TAG,
+            "syncing ${trips.size} trips, ${charges.size} charges, ${snapshots.size} snapshots, " +
+                "${tripPoints.size} trip points, ${chargePoints.size} charge points, " +
+                "${idleDrains.size} idle drains, ${ruleLogs.size} rule logs, " +
+                "${vehicleWrites.size} writes, ${counterSnapshots.size} counters, ${logs.size} log lines",
+        )
         val outcome = client.syncAll(
             cfg, trips, charges, snapshots, carState = null, logs = logs,
+            tripPoints = tripPoints, chargePoints = chargePoints, idleDrains = idleDrains,
+            ruleLogs = ruleLogs, vehicleWrites = vehicleWrites, counterSnapshots = counterSnapshots,
             pruneRetentionDays = if (prune) LOG_RETENTION_DAYS else null,
             pruneCarStateDays = if (prune) CAR_STATE_RETENTION_DAYS else null,
+            pruneDetailDays = if (prune) DETAIL_RETENTION_DAYS else null,
         )
         outcome.onSuccess {
             settingsRepository.setMysqlLastSyncTs(now)
             logCollector.markShipped(logs)
+            // One transactional write: a half-saved set of cursors would skip a page on the next
+            // sync while its rows only exist on the car.
+            val cursors = buildMap {
+                tripPoints.lastOrNull()?.let { put(SettingsRepository.KEY_MYSQL_CURSOR_TRIP_POINTS, "${it.tripId}:${it.id}") }
+                chargePoints.lastOrNull()?.let { put(SettingsRepository.KEY_MYSQL_CURSOR_CHARGE_POINTS, "${it.chargeId}:${it.id}") }
+                ruleLogs.lastOrNull()?.let { put(SettingsRepository.KEY_MYSQL_CURSOR_RULE_LOGS, it.id.toString()) }
+                vehicleWrites.lastOrNull()?.let { put(SettingsRepository.KEY_MYSQL_CURSOR_VEHICLE_WRITES, it.id.toString()) }
+                counterSnapshots.lastOrNull()?.let { put(SettingsRepository.KEY_MYSQL_CURSOR_COUNTER_SNAPSHOTS, it.id.toString()) }
+            }
+            if (cursors.isNotEmpty()) settingsRepository.setStrings(cursors)
             if (prune) {
                 settingsRepository.setString(SettingsRepository.KEY_MYSQL_LOG_PRUNED_TS, now.toString())
             }
         }.onFailure { Log.w(TAG, "sync failed: ${it.message}") }
         return outcome
     }
+
+    /** "parentId:pointId" for a point-table cursor; malformed values restart from the beginning. */
+    private suspend fun pairCursor(key: String): Pair<Long, Long> {
+        val parts = settingsRepository.getString(key, "0:0").split(':')
+        return (parts.getOrNull(0)?.toLongOrNull() ?: 0L) to
+            (parts.getOrNull(1)?.toLongOrNull() ?: 0L)
+    }
+
+    private suspend fun longCursor(key: String): Long =
+        settingsRepository.getString(key, "0").toLongOrNull() ?: 0L
 
     /**
      * Fire-and-forget live dashboard row from the sampling loop; throttled by the caller. Refuses
@@ -126,5 +182,16 @@ class MysqlSyncRepository @Inject constructor(
          * and battery snapshots grow with usage and stay.
          */
         private const val CAR_STATE_RETENTION_DAYS = 90
+
+        /** Same ceiling for the detail tables; trip points are the only one that really grows. */
+        private const val DETAIL_RETENTION_DAYS = 90
+
+        // Per-sync page sizes. The first run after an upgrade backfills everything the car already
+        // holds, so these bound one ignition's session: 20 000 points ≈ 100 statements of 200 rows.
+        private const val TRIP_POINTS_PER_SYNC = 20_000
+        private const val CHARGE_POINTS_PER_SYNC = 20_000
+        private const val COUNTER_SNAPSHOTS_PER_SYNC = 10_000
+        private const val RULE_LOGS_PER_SYNC = 2_000
+        private const val VEHICLE_WRITES_PER_SYNC = 500
     }
 }

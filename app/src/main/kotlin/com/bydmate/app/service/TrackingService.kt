@@ -20,9 +20,12 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.os.Build
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
+import android.os.StatFs
+import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityManager
 import androidx.core.app.NotificationCompat
@@ -141,6 +144,7 @@ class TrackingService : Service(), LocationListener {
     @Inject lateinit var vehicleKindMonitor: com.bydmate.app.data.nativestack.VehicleKindMonitor
     @Inject lateinit var counterSnapshotWriter: com.bydmate.app.data.trips.CounterSnapshotWriter
     @Inject lateinit var lastStateDao: com.bydmate.app.data.local.dao.LastStateDao
+    @Inject lateinit var chargingStateStore: com.bydmate.app.data.charging.ChargingStateStore
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var pollingJob: Job? = null
@@ -326,6 +330,7 @@ class TrackingService : Service(), LocationListener {
         private const val MYSQL_CAR_STATE_INTERVAL_MS = 30_000L
         /** How often the lifetime-charging inputs behind that row are re-read from Room. */
         private const val MYSQL_TOTALS_TTL_MS = 5 * 60_000L
+        private const val MB = 1024L * 1024L
         // Throttle autoservice gun-state read so we don't hit Binder/ADB on every
         // poll tick. 5 ticks ≈ 15 s — fast enough that the user sees a row
         // appear within ~half a minute of unplugging, gentle enough not to
@@ -1469,7 +1474,8 @@ class TrackingService : Service(), LocationListener {
                     odometerKm = data.mileage,
                     totals = totals,
                     // The typed columns are the dashboard subset; this carries every field the
-                    // polling loop already has, so a new consumer needs no schema change.
+                    // polling loop already has, plus the blocks that only exist outside the poll
+                    // batch (open trip, charge probe, one-shot fids, head-unit diagnostics).
                     rawJson = com.bydmate.app.data.mysql.CarStateRawJson.build(
                         data = data,
                         pushedAt = nowMs,
@@ -1488,6 +1494,11 @@ class TrackingService : Service(), LocationListener {
                                 altitudeM = l.altitude.takeIf { l.hasAltitude() },
                             )
                         },
+                        chargeSession = chargeSessionBlock(),
+                        tripLive = tripLiveBlock(),
+                        extraFids = runCatching { autoserviceClient.readExtraFids() }
+                            .getOrDefault(emptyMap()),
+                        diagnostics = diagnosticsBlock(),
                     ),
                 )
                 mysqlSyncRepository.pushCarState(snapshot)
@@ -1500,6 +1511,88 @@ class TrackingService : Service(), LocationListener {
             }
         }
     }
+
+    /**
+     * The charge detector's trail, plus one live read of the charging fids.
+     *
+     * The probe is what lets the phone show a session while it is still running: the ChargeEntity
+     * itself is only written at the end (gun removal or BMS finish), and the head unit sleeps
+     * through an overnight charge without leaving sampled rows behind.
+     */
+    private suspend fun chargeSessionBlock(): com.bydmate.app.data.mysql.CarStateRawJson.ChargeSessionSnapshot? {
+        val probe = runCatching { chargingStateStore.loadProbe() }.getOrNull()
+        val live = runCatching { autoserviceClient.readChargingSnapshot() }.getOrNull()
+        if (probe == null && live == null) return null
+        return com.bydmate.app.data.mysql.CarStateRawJson.ChargeSessionSnapshot(
+            live = live,
+            probeStartTs = probe?.startTs,
+            probeLastTickTs = probe?.lastTickTs,
+            probeLastSoc = probe?.lastSoc,
+            probeLastRiseTs = probe?.lastRiseTs,
+            probePeakKw = probe?.peakKw,
+            probeTempMinC = probe?.tempMinC,
+            probeTempMaxC = probe?.tempMaxC,
+            probeTempAvgC = probe?.tempAvgC,
+        )
+    }
+
+    /**
+     * The trip the car is driving right now, from the same last_state row cold-start recovery
+     * uses. Room's `trips` row does not exist until the trip closes, so without this the phone
+     * has nothing to show between ignition-on and the first stop.
+     */
+    private suspend fun tripLiveBlock(): com.bydmate.app.data.mysql.CarStateRawJson.TripLiveSnapshot? {
+        val state = runCatching { lastStateDao.getCurrent() }.getOrNull() ?: return null
+        val startTs = state.tripStartTs ?: return null
+        if (state.openTripId == null) return null
+        return com.bydmate.app.data.mysql.CarStateRawJson.TripLiveSnapshot(
+            startTs = startTs,
+            startSoc = state.tripStartSoc,
+            startMileageKm = state.tripStartMileage,
+            startTotalElecKwh = state.tripStartTotalElec,
+            startExteriorTempC = state.tripStartExteriorTemp,
+            startFuelTotalL = state.tripStartFuelTotal,
+            startMileageHevKm = state.tripStartMileageHev,
+            lastTickTs = state.ts,
+            lastSoc = state.soc,
+            lastMileageKm = state.mileage,
+            lastTotalElecKwh = state.totalElec,
+        )
+    }
+
+    /** Head-unit facts: the phone cannot see any of this, and it explains a silent car. */
+    private suspend fun diagnosticsBlock(): com.bydmate.app.data.mysql.CarStateRawJson.DiagnosticsSnapshot {
+        val runtime = Runtime.getRuntime()
+        val statFs = runCatching { StatFs(filesDir.absolutePath) }.getOrNull()
+        val lastSync = settingsRepository
+            .getString(SettingsRepository.KEY_MYSQL_LAST_SYNC_TS, "0")
+            .toLongOrNull()?.takeIf { it > 0L }
+        return com.bydmate.app.data.mysql.CarStateRawJson.DiagnosticsSnapshot(
+            adbVerdict = adbVerdictMonitor.verdict.value?.name,
+            uptimeSeconds = SystemClock.elapsedRealtime() / 1000L,
+            heapUsedMb = (runtime.totalMemory() - runtime.freeMemory()) / MB,
+            heapMaxMb = runtime.maxMemory() / MB,
+            storageFreeMb = statFs?.let { it.availableBytes / MB },
+            storageTotalMb = statFs?.let { it.totalBytes / MB },
+            networkType = activeNetworkType(),
+            androidRelease = Build.VERSION.RELEASE ?: "?",
+            sdkInt = Build.VERSION.SDK_INT,
+            deviceModel = Build.MODEL ?: "?",
+            lastSyncTs = lastSync,
+        )
+    }
+
+    private fun activeNetworkType(): String? = runCatching {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return null
+        val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) } ?: return null
+        when {
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) -> "vpn"
+            else -> "other"
+        }
+    }.getOrNull()
 
     /**
      * The app's own sum of logged charging sessions, the fallback when the car answers no lifetime

@@ -34,6 +34,10 @@ interface RuleLogDao {
     @Query("SELECT * FROM automation_log ORDER BY triggered_at DESC LIMIT :limit")
     suspend fun getRecentList(limit: Int): List<RuleLogEntity>
 
+    /** Oldest-first page above the sync cursor; id order is write order. */
+    @Query("SELECT * FROM automation_log WHERE id > :afterId ORDER BY id ASC LIMIT :limit")
+    suspend fun getForSync(afterId: Long, limit: Int): List<RuleLogEntity>
+
     /** Keeps the [keep] newest rows, deletes the rest; returns how many went. */
     @Query(
         "DELETE FROM automation_log WHERE id NOT IN " +

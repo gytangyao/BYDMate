@@ -10,6 +10,14 @@ interface ChargePointDao {
     @Insert
     suspend fun insertAll(points: List<ChargePointEntity>)
 
+    /** One sync page keyed by (charge_id, id), resumable inside a charge. */
+    @Query(
+        "SELECT * FROM charge_points WHERE charge_id > 0 " +
+            "AND (charge_id > :chargeId OR (charge_id = :chargeId AND id > :pointId)) " +
+            "ORDER BY charge_id ASC, id ASC LIMIT :limit"
+    )
+    suspend fun getForSync(chargeId: Long, pointId: Long, limit: Int): List<ChargePointEntity>
+
     @Query("SELECT * FROM charge_points WHERE charge_id = :chargeId ORDER BY timestamp ASC")
     suspend fun getByChargeId(chargeId: Long): List<ChargePointEntity>
 

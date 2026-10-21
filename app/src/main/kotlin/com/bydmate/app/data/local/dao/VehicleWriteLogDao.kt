@@ -16,6 +16,10 @@ interface VehicleWriteLogDao {
     @Query("SELECT * FROM vehicle_write_log ORDER BY id DESC LIMIT :limit")
     suspend fun getLatest(limit: Int): List<VehicleWriteLogEntity>
 
+    /** Oldest-first page above the sync cursor. */
+    @Query("SELECT * FROM vehicle_write_log WHERE id > :afterId ORDER BY id ASC LIMIT :limit")
+    suspend fun getForSync(afterId: Long, limit: Int): List<VehicleWriteLogEntity>
+
     /** Keeps the [keep] newest rows; returns how many were deleted. A diagnostics table: nothing
      *  else bounds it. */
     @Query("DELETE FROM vehicle_write_log WHERE id NOT IN (SELECT id FROM vehicle_write_log ORDER BY id DESC LIMIT :keep)")

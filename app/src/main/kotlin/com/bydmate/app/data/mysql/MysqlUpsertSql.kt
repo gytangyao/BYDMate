@@ -2,7 +2,13 @@ package com.bydmate.app.data.mysql
 
 import com.bydmate.app.data.local.entity.BatterySnapshotEntity
 import com.bydmate.app.data.local.entity.ChargeEntity
+import com.bydmate.app.data.local.entity.ChargePointEntity
+import com.bydmate.app.data.local.entity.CounterSnapshotEntity
+import com.bydmate.app.data.local.entity.IdleDrainEntity
+import com.bydmate.app.data.local.entity.RuleLogEntity
 import com.bydmate.app.data.local.entity.TripEntity
+import com.bydmate.app.data.local.entity.TripPointEntity
+import com.bydmate.app.data.local.entity.VehicleWriteLogEntity
 
 /**
  * Live dashboard reading the phone shows as "current state". Field-for-field the columns of
@@ -39,6 +45,9 @@ internal object MysqlUpsertSql {
 
     /** The `app_logs.msg` column is VARCHAR(2048); a longer tail belongs to the next line. */
     const val MAX_LOG_MSG_CHARS = 2000
+
+    /** `vehicle_write_log.error` is VARCHAR(512). */
+    const val MAX_WRITE_ERROR_CHARS = 500
 
     fun trips(entity: TripEntity, vehicleId: String, now: Long): Upsert = Upsert(
         table = "trips",
@@ -97,6 +106,80 @@ internal object MysqlUpsertSql {
             entity.id, vehicleId, entity.timestamp, entity.odometerKm, entity.socStart,
             entity.socEnd, entity.kwhCharged, entity.calculatedCapacityKwh, entity.sohPercent,
             entity.cellDeltaV, entity.batTempAvg, entity.chargeId, 1L, now,
+        ),
+        key = listOf("vehicle_id", "id"),
+    )
+
+    fun tripPoints(entity: TripPointEntity, vehicleId: String): Upsert = Upsert(
+        table = "trip_points",
+        columns = listOf(
+            "id", "vehicle_id", "trip_id", "ts", "lat", "lon", "speed_kmh", "altitude_m",
+        ),
+        values = listOf(
+            entity.id, vehicleId, entity.tripId, entity.timestamp, entity.lat, entity.lon,
+            entity.speedKmh, entity.altitude,
+        ),
+        key = listOf("vehicle_id", "id"),
+    )
+
+    fun chargePoints(entity: ChargePointEntity, vehicleId: String): Upsert = Upsert(
+        table = "charge_points",
+        columns = listOf("id", "vehicle_id", "charge_id", "ts", "power_kw", "soc", "bat_temp_c"),
+        values = listOf(
+            entity.id, vehicleId, entity.chargeId, entity.timestamp, entity.powerKw,
+            entity.soc, entity.batTemp,
+        ),
+        key = listOf("vehicle_id", "id"),
+    )
+
+    fun idleDrains(entity: IdleDrainEntity, vehicleId: String): Upsert = Upsert(
+        table = "idle_drains",
+        columns = listOf(
+            "id", "vehicle_id", "start_ts", "end_ts", "soc_start", "soc_end", "kwh_consumed",
+        ),
+        values = listOf(
+            entity.id, vehicleId, entity.startTs, entity.endTs, entity.socStart, entity.socEnd,
+            entity.kwhConsumed,
+        ),
+        key = listOf("vehicle_id", "id"),
+    )
+
+    fun ruleLogs(entity: RuleLogEntity, vehicleId: String): Upsert = Upsert(
+        table = "rule_logs",
+        columns = listOf(
+            "id", "vehicle_id", "rule_id", "rule_name", "triggered_at", "triggers_snapshot",
+            "actions_result", "success",
+        ),
+        values = listOf(
+            entity.id, vehicleId, entity.ruleId, entity.ruleName, entity.triggeredAt,
+            entity.triggersSnapshot, entity.actionsResult, if (entity.success) 1L else 0L,
+        ),
+        key = listOf("vehicle_id", "id"),
+    )
+
+    fun vehicleWriteLogs(entity: VehicleWriteLogEntity, vehicleId: String): Upsert = Upsert(
+        table = "vehicle_write_log",
+        columns = listOf(
+            "id", "vehicle_id", "ts", "action_name", "dev", "fid", "requested", "readback",
+            "status", "error", "validated",
+        ),
+        values = listOf(
+            entity.id, vehicleId, entity.ts, entity.actionName, entity.dev, entity.fid,
+            entity.requested, entity.readback, entity.status,
+            entity.error?.take(MAX_WRITE_ERROR_CHARS), if (entity.validated) 1L else 0L,
+        ),
+        key = listOf("vehicle_id", "id"),
+    )
+
+    fun counterSnapshots(entity: CounterSnapshotEntity, vehicleId: String): Upsert = Upsert(
+        table = "counter_snapshots",
+        columns = listOf(
+            "id", "vehicle_id", "ts", "fuel_total", "mileage_hev", "mileage_ev", "odometer",
+            "reason",
+        ),
+        values = listOf(
+            entity.id, vehicleId, entity.ts, entity.fuelTotal, entity.mileageHev,
+            entity.mileageEv, entity.odometer, entity.reason,
         ),
         key = listOf("vehicle_id", "id"),
     )
@@ -163,6 +246,36 @@ internal object MysqlUpsertSql {
     fun carStatePrune(vehicleId: String, retentionDays: Int, limit: Int): String =
         "DELETE FROM `car_state` WHERE `vehicle_id` = ${SqlLiteral.of(vehicleId)} " +
             "AND `pushed_at` < (UNIX_TIMESTAMP() - ${retentionDays.toLong() * 86_400L}) * 1000 " +
+            "LIMIT $limit"
+
+    /** The six detail tables share the `car_state` ceiling and the server-clock cutoff. */
+    fun tripPointsPrune(vehicleId: String, retentionDays: Int, limit: Int): String =
+        detailPrune("trip_points", "ts", vehicleId, retentionDays, limit)
+
+    fun chargePointsPrune(vehicleId: String, retentionDays: Int, limit: Int): String =
+        detailPrune("charge_points", "ts", vehicleId, retentionDays, limit)
+
+    fun idleDrainsPrune(vehicleId: String, retentionDays: Int, limit: Int): String =
+        detailPrune("idle_drains", "start_ts", vehicleId, retentionDays, limit)
+
+    fun ruleLogsPrune(vehicleId: String, retentionDays: Int, limit: Int): String =
+        detailPrune("rule_logs", "triggered_at", vehicleId, retentionDays, limit)
+
+    fun vehicleWriteLogsPrune(vehicleId: String, retentionDays: Int, limit: Int): String =
+        detailPrune("vehicle_write_log", "ts", vehicleId, retentionDays, limit)
+
+    fun counterSnapshotsPrune(vehicleId: String, retentionDays: Int, limit: Int): String =
+        detailPrune("counter_snapshots", "ts", vehicleId, retentionDays, limit)
+
+    private fun detailPrune(
+        table: String,
+        tsColumn: String,
+        vehicleId: String,
+        retentionDays: Int,
+        limit: Int,
+    ): String =
+        "DELETE FROM `$table` WHERE `vehicle_id` = ${SqlLiteral.of(vehicleId)} " +
+            "AND `$tsColumn` < (UNIX_TIMESTAMP() - ${retentionDays.toLong() * 86_400L}) * 1000 " +
             "LIMIT $limit"
 }
 

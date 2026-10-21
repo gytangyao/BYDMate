@@ -1,5 +1,7 @@
 package com.bydmate.app.data.mysql
 
+import com.bydmate.app.data.local.entity.TripPointEntity
+import com.bydmate.app.data.local.entity.VehicleWriteLogEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -98,5 +100,60 @@ class UpsertRenderTest {
         val sql = MysqlUpsertSql.carStatePrune("ev''); DROP TABLE car_state; -- '", 90, 1_000)
         assertTrue(sql, sql.contains("'ev''''"))
         assertTrue(sql, sql.endsWith("LIMIT 1000"))
+    }
+
+    /**
+     * Points exist on the car before the hub first sees them, so the same id may be sent twice
+     * after a failed sync: the upsert key is what keeps that from duplicating the trace.
+     */
+    @Test fun `a trip point is keyed by vehicle and local id`() {
+        val sql = MysqlUpsertSql.tripPoints(
+            TripPointEntity(id = 9L, tripId = 4L, timestamp = 123L, lat = 1.5, lon = 2.5, speedKmh = 30.0),
+            "byd-1",
+        ).render()
+        assertTrue(sql, sql.startsWith("INSERT INTO `trip_points`"))
+        assertTrue(sql, sql.contains("ON DUPLICATE KEY UPDATE"))
+        assertTrue(sql, sql.contains("`trip_id`=VALUES(`trip_id`)"))
+        assertFalse("the key columns must not be in the update set", sql.contains("`id`=VALUES"))
+    }
+
+    /** MySQL has no boolean type on this path: it must travel as an integer, not `true`/`false`. */
+    @Test fun `a vehicle write ships its validated flag as an integer`() {
+        fun sql(validated: Boolean) = MysqlUpsertSql.vehicleWriteLogs(
+            VehicleWriteLogEntity(
+                id = 1L, ts = 2L, actionName = "lock", dev = 3, fid = 4, requested = 1,
+                readback = 1, status = 0, error = null, validated = validated,
+            ),
+            "byd-1",
+        ).render()
+        assertTrue(sql(true), sql(true).contains(", 1)"))
+        assertTrue(sql(false), sql(false).contains(", 0)"))
+    }
+
+    /**
+     * Each detail table has its own time column; pruning the wrong one would delete by an
+     * unrelated clock. All six share the server cutoff and the batch ceiling.
+     */
+    @Test fun `detail pruning uses each table's own time column`() {
+        val expected = mapOf(
+            MysqlUpsertSql.tripPointsPrune("byd-1", 90, 2_000) to "`ts` <",
+            MysqlUpsertSql.chargePointsPrune("byd-1", 90, 2_000) to "`ts` <",
+            MysqlUpsertSql.idleDrainsPrune("byd-1", 90, 2_000) to "`start_ts` <",
+            MysqlUpsertSql.ruleLogsPrune("byd-1", 90, 2_000) to "`triggered_at` <",
+            MysqlUpsertSql.vehicleWriteLogsPrune("byd-1", 90, 2_000) to "`ts` <",
+            MysqlUpsertSql.counterSnapshotsPrune("byd-1", 90, 2_000) to "`ts` <",
+        )
+        for ((sql, column) in expected) {
+            assertTrue(sql, sql.startsWith("DELETE FROM `"))
+            assertTrue(sql, sql.contains("`vehicle_id` = 'byd-1'"))
+            assertTrue(sql, sql.contains("$column (UNIX_TIMESTAMP() - 7776000) * 1000"))
+            assertTrue(sql, sql.endsWith("LIMIT 2000"))
+        }
+    }
+
+    @Test fun `detail pruning quotes the vehicle id`() {
+        val sql = MysqlUpsertSql.tripPointsPrune("ev''); DROP TABLE trip_points; -- '", 90, 2_000)
+        assertTrue(sql, sql.contains("'ev''''"))
+        assertTrue(sql, sql.endsWith("LIMIT 2000"))
     }
 }

@@ -128,6 +128,14 @@ open class SettingsRepository @Inject constructor(
         const val KEY_MYSQL_LOG_DAY_ROWS = "mysql_log_day_rows"
         /** Earliest ts deleted by the last retention pass; a pass runs at most once a day. */
         const val KEY_MYSQL_LOG_PRUNED_TS = "mysql_log_pruned_ts"
+        // Detail-table ship cursors. Point tables store "parentId:pointId" (see TripPointDao); the
+        // append-only tables store their last local row id. A cursor only advances after commit,
+        // so a failed sync re-sends the same page instead of skipping it.
+        const val KEY_MYSQL_CURSOR_TRIP_POINTS = "mysql_cursor_trip_points"
+        const val KEY_MYSQL_CURSOR_CHARGE_POINTS = "mysql_cursor_charge_points"
+        const val KEY_MYSQL_CURSOR_RULE_LOGS = "mysql_cursor_rule_logs"
+        const val KEY_MYSQL_CURSOR_VEHICLE_WRITES = "mysql_cursor_vehicle_writes"
+        const val KEY_MYSQL_CURSOR_COUNTER_SNAPSHOTS = "mysql_cursor_counter_snapshots"
         // Automatic backup (#237). Period = AutoBackupPeriod.key; last_ts = 0 until the first export.
         const val KEY_AUTO_BACKUP_PERIOD = "auto_backup_period"
         const val KEY_AUTO_BACKUP_LAST_TS = "auto_backup_last_ts"

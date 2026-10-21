@@ -136,6 +136,102 @@ CREATE TABLE IF NOT EXISTS battery_snapshots (
 ) ENGINE = InnoDB;
 
 -- ---------------------------------------------------------------------------
+-- Detail tables: the history behind the cards. Each row carries the vehicle id
+-- because the phone reads the hub as one flat store; ids are the car's local
+-- Room ids, so a re-sent row is an idempotent upsert and not a duplicate.
+-- The car prunes all six to the same 90-day ceiling as `car_state`.
+-- ---------------------------------------------------------------------------
+
+-- GPS trace of a finished trip, one row per sampled fix. `trip_id` is 0 in
+-- Room while the car is still driving; only attached points are shipped.
+CREATE TABLE IF NOT EXISTS trip_points (
+  id          BIGINT UNSIGNED NOT NULL,
+  vehicle_id  VARCHAR(64)     NOT NULL,
+  trip_id     BIGINT UNSIGNED NOT NULL,
+  ts          BIGINT          NOT NULL COMMENT 'car clock, epoch ms',
+  lat         DOUBLE          NOT NULL,
+  lon         DOUBLE          NOT NULL,
+  speed_kmh   DOUBLE          NULL,
+  altitude_m  DOUBLE          NULL,
+  PRIMARY KEY (vehicle_id, id),
+  KEY idx_trip_points_trip (vehicle_id, trip_id, ts),
+  KEY idx_trip_points_ts   (vehicle_id, ts)
+) ENGINE = InnoDB;
+
+-- Charging curve of a finished session.
+CREATE TABLE IF NOT EXISTS charge_points (
+  id          BIGINT UNSIGNED NOT NULL,
+  vehicle_id  VARCHAR(64)     NOT NULL,
+  charge_id   BIGINT UNSIGNED NOT NULL,
+  ts          BIGINT          NOT NULL,
+  power_kw    DOUBLE          NULL,
+  soc         INT             NULL,
+  bat_temp_c  INT             NULL,
+  PRIMARY KEY (vehicle_id, id),
+  KEY idx_charge_points_charge (vehicle_id, charge_id, ts),
+  KEY idx_charge_points_ts     (vehicle_id, ts)
+) ENGINE = InnoDB;
+
+-- Parked-with-ignition-on drain sessions. Rows are updated while they run, so
+-- the car re-upserts the whole (small) table instead of using a cursor.
+CREATE TABLE IF NOT EXISTS idle_drains (
+  id            BIGINT UNSIGNED NOT NULL,
+  vehicle_id    VARCHAR(64)     NOT NULL,
+  start_ts      BIGINT          NOT NULL,
+  end_ts        BIGINT          NULL,
+  soc_start     INT             NULL,
+  soc_end       INT             NULL,
+  kwh_consumed  DOUBLE          NULL,
+  PRIMARY KEY (vehicle_id, id),
+  KEY idx_idle_drains_start (vehicle_id, start_ts)
+) ENGINE = InnoDB;
+
+-- Automation journal (the car's local table is named automation_log).
+CREATE TABLE IF NOT EXISTS rule_logs (
+  id                BIGINT UNSIGNED NOT NULL,
+  vehicle_id        VARCHAR(64)     NOT NULL,
+  rule_id           BIGINT          NOT NULL,
+  rule_name         VARCHAR(200)    NOT NULL,
+  triggered_at      BIGINT          NOT NULL,
+  triggers_snapshot TEXT            NULL,
+  actions_result    TEXT            NULL,
+  success           TINYINT(1)      NOT NULL DEFAULT 0,
+  PRIMARY KEY (vehicle_id, id),
+  KEY idx_rule_logs_time (vehicle_id, triggered_at)
+) ENGINE = InnoDB;
+
+-- Every vehicle write the car attempted, with its readback verdict.
+CREATE TABLE IF NOT EXISTS vehicle_write_log (
+  id           BIGINT UNSIGNED NOT NULL,
+  vehicle_id   VARCHAR(64)     NOT NULL,
+  ts           BIGINT          NOT NULL,
+  action_name  VARCHAR(64)     NOT NULL,
+  dev          INT             NOT NULL,
+  fid          INT             NOT NULL,
+  requested    INT             NOT NULL,
+  readback     INT             NULL,
+  status       INT             NOT NULL,
+  error        VARCHAR(512)    NULL,
+  validated    TINYINT(1)      NOT NULL DEFAULT 0,
+  PRIMARY KEY (vehicle_id, id),
+  KEY idx_vehicle_writes_ts (vehicle_id, ts)
+) ENGINE = InnoDB;
+
+-- DM-i counter snapshots: the anchors HistoryImporter uses for fuel figures.
+CREATE TABLE IF NOT EXISTS counter_snapshots (
+  id           BIGINT UNSIGNED NOT NULL,
+  vehicle_id   VARCHAR(64)     NOT NULL,
+  ts           BIGINT          NOT NULL,
+  fuel_total   DOUBLE          NULL,
+  mileage_hev  DOUBLE          NULL,
+  mileage_ev   DOUBLE          NULL,
+  odometer     DOUBLE          NULL,
+  reason       VARCHAR(16)     NOT NULL,
+  PRIMARY KEY (vehicle_id, id),
+  KEY idx_counter_snapshots_ts (vehicle_id, ts)
+) ENGINE = InnoDB;
+
+-- ---------------------------------------------------------------------------
 -- app_logs — runtime log lines shipped by BOTH apps, because the head unit cannot
 -- be attached to a debugger: this table is the remote diagnosis channel.
 -- `source` separates the writer ('car' / 'phone') so one vehicle's two sides never

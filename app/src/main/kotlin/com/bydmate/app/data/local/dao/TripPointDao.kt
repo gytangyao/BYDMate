@@ -10,6 +10,18 @@ interface TripPointDao {
     @Insert
     suspend fun insertAll(points: List<TripPointEntity>)
 
+    /**
+     * One sync page, keyed by (trip_id, id): a LIMIT may land in the middle of a trip, so the
+     * cursor has to be able to resume inside it. Points still in flight have trip_id = 0 and are
+     * deliberately invisible until HistoryImporter attaches them.
+     */
+    @Query(
+        "SELECT * FROM trip_points WHERE trip_id > 0 " +
+            "AND (trip_id > :tripId OR (trip_id = :tripId AND id > :pointId)) " +
+            "ORDER BY trip_id ASC, id ASC LIMIT :limit"
+    )
+    suspend fun getForSync(tripId: Long, pointId: Long, limit: Int): List<TripPointEntity>
+
     @Query("SELECT * FROM trip_points WHERE trip_id = :tripId ORDER BY timestamp ASC")
     suspend fun getByTripId(tripId: Long): List<TripPointEntity>
 

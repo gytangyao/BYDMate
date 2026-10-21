@@ -36,6 +36,13 @@ interface AutoserviceClient {
     suspend fun readSohPercent(): Float?
 
     /**
+     * The one-shot fids that are not part of the poll batch and not in [ChargingReading]: the
+     * lifetime consumption average, blind-spot warnings, and the actual seat status/config
+     * words. Field name → value; a fid that answers nothing is simply absent, never zero.
+     */
+    suspend fun readExtraFids(): Map<String, Double>
+
+    /**
      * Live battery power in kW from autoservice ENG_POW. Single-read wrapper
      * over getInt — IternioTelemetryClient applies the [-300, +500] sanity
      * envelope, so this returns the raw decoded value or null on
@@ -168,6 +175,14 @@ class AutoserviceClientImpl @Inject constructor(
         return getInt("soh")?.toFloat()
     }
 
+    override suspend fun readExtraFids(): Map<String, Double> {
+        if (!adb.isConnected()) return emptyMap()
+        val out = LinkedHashMap<String, Double>()
+        getFloat("lifetimeAvgPhm")?.let { out["lifetimeAvgPhm"] = it.toDouble() }
+        for (field in EXTRA_FIDS_INT) getInt(field)?.let { out[field] = it.toDouble() }
+        return out
+    }
+
     override suspend fun readChargingSnapshot(): ChargingReading? {
         if (!adb.isConnected()) return null
         return ChargingReading(
@@ -197,5 +212,17 @@ class AutoserviceClientImpl @Inject constructor(
     private companion object {
         const val TAG = "AutoserviceClient"
         val PARCEL_REGEX = Regex("""Parcel\(\s*00000000\s+([0-9a-fA-F]{8})""")
+
+        /**
+         * The 30 s raw push reads these on each pass. Seats use the primary symbols only: the
+         * candidate/3CE/LRSE twins are a per-firmware diagnostic set, not a dashboard value.
+         */
+        val EXTRA_FIDS_INT = listOf(
+            "bsdLeft", "bsdRight",
+            "seatVentStatusDriver", "seatHeatStatusDriver",
+            "seatConfigVentLf", "seatConfigHeatLf",
+            "seatHasDriverVent", "seatHasDriverHeat",
+            "seatCandPassengerVentStatus", "seatCandPassengerHeatStatus",
+        )
     }
 }

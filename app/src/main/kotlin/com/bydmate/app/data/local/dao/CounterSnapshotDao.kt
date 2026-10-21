@@ -22,4 +22,8 @@ interface CounterSnapshotDao {
 
     @Query("DELETE FROM counter_snapshots WHERE ts < :ts")
     suspend fun deleteOlderThan(ts: Long)
+
+    /** Oldest-first page above the sync cursor. */
+    @Query("SELECT * FROM counter_snapshots WHERE id > :afterId ORDER BY id ASC LIMIT :limit")
+    suspend fun getForSync(afterId: Long, limit: Int): List<CounterSnapshotEntity>
 }

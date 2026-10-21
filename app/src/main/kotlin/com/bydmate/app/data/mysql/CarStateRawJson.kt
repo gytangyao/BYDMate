@@ -1,6 +1,7 @@
 package com.bydmate.app.data.mysql
 
 import com.bydmate.app.BuildConfig
+import com.bydmate.app.data.autoservice.ChargingReading
 import com.bydmate.app.data.remote.DiParsData
 import org.json.JSONObject
 
@@ -15,6 +16,12 @@ import org.json.JSONObject
  *
  * Nulls are omitted rather than written: a missing key means "the car did not answer", never zero.
  * Keys are snake_case with units, and follow the typed column names where one exists.
+ *
+ * Besides the one-second poll payload, four optional blocks ride along (each omitted entirely
+ * when there is nothing to say): [chargeSession] from the charge detector's probe, [tripLive]
+ * from last_state while a trip is open, [extraFids] read one-shot from autoservice, and
+ * [diagnostics] about the head unit itself. They are additive: [VERSION] only changes when an
+ * existing key changes meaning.
  */
 internal object CarStateRawJson {
 
@@ -33,12 +40,62 @@ internal object CarStateRawJson {
         val altitudeM: Double? = null,
     )
 
+    /** The charge detector's live trail; null fields mean the fid or probe was unavailable. */
+    data class ChargeSessionSnapshot(
+        val live: ChargingReading? = null,
+        val probeStartTs: Long? = null,
+        val probeLastTickTs: Long? = null,
+        val probeLastSoc: Int? = null,
+        val probeLastRiseTs: Long? = null,
+        val probePeakKw: Double? = null,
+        val probeTempMinC: Double? = null,
+        val probeTempMaxC: Double? = null,
+        val probeTempAvgC: Double? = null,
+    ) {
+        val isEmpty: Boolean
+            get() = live == null && probeStartTs == null
+    }
+
+    /** Anchors of the trip that is still running; its points are not attached until it closes. */
+    data class TripLiveSnapshot(
+        val startTs: Long,
+        val startSoc: Int? = null,
+        val startMileageKm: Double? = null,
+        val startTotalElecKwh: Double? = null,
+        val startExteriorTempC: Int? = null,
+        val startFuelTotalL: Double? = null,
+        val startMileageHevKm: Double? = null,
+        val lastTickTs: Long,
+        val lastSoc: Int? = null,
+        val lastMileageKm: Double? = null,
+        val lastTotalElecKwh: Double? = null,
+    )
+
+    /** Facts about the head unit, not the car: what the phone needs to explain an outage. */
+    data class DiagnosticsSnapshot(
+        val adbVerdict: String? = null,
+        val uptimeSeconds: Long,
+        val heapUsedMb: Long,
+        val heapMaxMb: Long,
+        val storageFreeMb: Long? = null,
+        val storageTotalMb: Long? = null,
+        val networkType: String? = null,
+        val androidRelease: String,
+        val sdkInt: Int,
+        val deviceModel: String,
+        val lastSyncTs: Long? = null,
+    )
+
     fun build(
         data: DiParsData,
         pushedAt: Long,
         sohPct: Double?,
         vehicleKind: String?,
         location: CarLocationSnapshot? = null,
+        chargeSession: ChargeSessionSnapshot? = null,
+        tripLive: TripLiveSnapshot? = null,
+        extraFids: Map<String, Double> = emptyMap(),
+        diagnostics: DiagnosticsSnapshot? = null,
     ): String = JSONObject().apply {
         put("v", VERSION)
         put("pushed_at", pushedAt)
@@ -178,6 +235,68 @@ internal object CarStateRawJson {
         num("mileage_ev_km", data.mileageEvKm)
         num("engine_rpm", data.engineRpm)
         num("ev_range_km", data.evRangeKm)
+
+        chargeSession?.takeUnless { it.isEmpty }?.let { s ->
+            put("charge_session", JSONObject().apply {
+                s.live?.let { live ->
+                    num("gun_connect_state", live.gunConnectState)
+                    num("charging_type", live.chargingType)
+                    num("charge_battery_volt_v", live.chargeBatteryVoltV)
+                    num("battery_type", live.batteryType)
+                    num("charging_capacity_kwh", live.chargingCapacityKwh)
+                    num("bms_state", live.bmsState)
+                    num("charger_connect_state", live.chargerConnectState)
+                    num("charge_connect_indicator", live.chargeConnectIndicator)
+                    put("read_at", live.readAtMs)
+                }
+                num("probe_start_ts", s.probeStartTs)
+                num("probe_last_tick_ts", s.probeLastTickTs)
+                num("probe_last_soc_pct", s.probeLastSoc)
+                num("probe_last_rise_ts", s.probeLastRiseTs)
+                num("probe_peak_kw", s.probePeakKw)
+                num("probe_temp_min_c", s.probeTempMinC)
+                num("probe_temp_max_c", s.probeTempMaxC)
+                num("probe_temp_avg_c", s.probeTempAvgC)
+            })
+        }
+
+        tripLive?.let { t ->
+            put("trip_live", JSONObject().apply {
+                put("start_ts", t.startTs)
+                num("start_soc_pct", t.startSoc)
+                num("start_mileage_km", t.startMileageKm)
+                num("start_total_elec_kwh", t.startTotalElecKwh)
+                num("start_exterior_temp_c", t.startExteriorTempC)
+                num("start_fuel_total_l", t.startFuelTotalL)
+                num("start_mileage_hev_km", t.startMileageHevKm)
+                put("last_tick_ts", t.lastTickTs)
+                num("last_soc_pct", t.lastSoc)
+                num("last_mileage_km", t.lastMileageKm)
+                num("last_total_elec_kwh", t.lastTotalElecKwh)
+            })
+        }
+
+        if (extraFids.isNotEmpty()) {
+            put("extra_fids", JSONObject().apply {
+                for ((key, value) in extraFids) num(key, value)
+            })
+        }
+
+        diagnostics?.let { d ->
+            put("diag", JSONObject().apply {
+                d.adbVerdict?.let { put("adb_verdict", it) }
+                put("uptime_s", d.uptimeSeconds)
+                put("heap_used_mb", d.heapUsedMb)
+                put("heap_max_mb", d.heapMaxMb)
+                num("storage_free_mb", d.storageFreeMb)
+                num("storage_total_mb", d.storageTotalMb)
+                d.networkType?.let { put("network", it) }
+                put("android", d.androidRelease)
+                put("sdk_int", d.sdkInt)
+                put("device", d.deviceModel)
+                num("last_sync_ts", d.lastSyncTs)
+            })
+        }
     }.toString()
 
     private fun JSONObject.num(key: String, value: Int?) {
@@ -190,5 +309,9 @@ internal object CarStateRawJson {
 
     private fun JSONObject.num(key: String, value: Float?) {
         if (value != null && value.isFinite()) put(key, value.toDouble())
+    }
+
+    private fun JSONObject.num(key: String, value: Long?) {
+        if (value != null) put(key, value)
     }
 }

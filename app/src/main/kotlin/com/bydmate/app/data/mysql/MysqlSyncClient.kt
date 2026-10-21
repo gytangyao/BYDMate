@@ -3,7 +3,13 @@ package com.bydmate.app.data.mysql
 import android.util.Log
 import com.bydmate.app.data.local.entity.BatterySnapshotEntity
 import com.bydmate.app.data.local.entity.ChargeEntity
+import com.bydmate.app.data.local.entity.ChargePointEntity
+import com.bydmate.app.data.local.entity.CounterSnapshotEntity
+import com.bydmate.app.data.local.entity.IdleDrainEntity
+import com.bydmate.app.data.local.entity.RuleLogEntity
 import com.bydmate.app.data.local.entity.TripEntity
+import com.bydmate.app.data.local.entity.TripPointEntity
+import com.bydmate.app.data.local.entity.VehicleWriteLogEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.sql.Connection
@@ -47,11 +53,15 @@ class MysqlSyncClient @Inject constructor() {
     }
 
     /**
-     * Upserts every row in [trips]/[charges]/[batterySnapshots], appends one [carState] sample and
-     * the [logs] lines, and drops rows older than [pruneRetentionDays] (`app_logs`) and
-     * [pruneCarStateDays] (`car_state`) — all inside a single transaction on a single session.
-     * Returns how many rows each table touched. An empty list is a no-op for that table; a null
-     * [carState] skips the sample row; a null retention leaves that table alone for this pass.
+     * Upserts every row in [trips]/[charges]/[batterySnapshots] and the five cursor-fed detail
+     * tables, re-upserts the small [idleDrains] table, appends one [carState] sample and the
+     * [logs] lines, and drops rows older than the three retention windows — all inside a single
+     * transaction on a single session. Returns how many rows each table touched. An empty list is
+     * a no-op for that table; a null [carState] skips the sample row; a null retention leaves that
+     * table alone for this pass.
+     *
+     * The detail tables are handed in already paged by the repository; the retention deletes are
+     * bounded per pass so a first run cannot hold the one session for minutes (see [pruneLogs]).
      *
      * [gateWaitMs] is how long to queue behind whoever holds the only permit: the history sync waits
      * (its data is worth serialising), a live sample waits for nothing (see [tryPushCarState]).
@@ -63,8 +73,15 @@ class MysqlSyncClient @Inject constructor() {
         batterySnapshots: List<BatterySnapshotEntity>,
         carState: CarStateSnapshot?,
         logs: List<MysqlLogRecord> = emptyList(),
+        tripPoints: List<TripPointEntity> = emptyList(),
+        chargePoints: List<ChargePointEntity> = emptyList(),
+        idleDrains: List<IdleDrainEntity> = emptyList(),
+        ruleLogs: List<RuleLogEntity> = emptyList(),
+        vehicleWrites: List<VehicleWriteLogEntity> = emptyList(),
+        counterSnapshots: List<CounterSnapshotEntity> = emptyList(),
         pruneRetentionDays: Int? = null,
         pruneCarStateDays: Int? = null,
+        pruneDetailDays: Int? = null,
         gateWaitMs: Long = GATE_WAIT_SYNC_MS,
     ): Result<SyncOutcome> = withContext(Dispatchers.IO) {
         runCatching {
@@ -76,12 +93,26 @@ class MysqlSyncClient @Inject constructor() {
                     val nTrips = batchUpsert(c, trips.map { MysqlUpsertSql.trips(it, cfg.vehicleId, now) })
                     val nCharges = batchUpsert(c, charges.map { MysqlUpsertSql.charges(it, cfg.vehicleId, now) })
                     val nSnaps = batchUpsert(c, batterySnapshots.map { MysqlUpsertSql.batterySnapshots(it, cfg.vehicleId, now) })
+                    val nTripPoints = batchUpsert(c, tripPoints.map { MysqlUpsertSql.tripPoints(it, cfg.vehicleId) })
+                    val nChargePoints = batchUpsert(c, chargePoints.map { MysqlUpsertSql.chargePoints(it, cfg.vehicleId) })
+                    val nIdle = batchUpsert(c, idleDrains.map { MysqlUpsertSql.idleDrains(it, cfg.vehicleId) })
+                    val nRules = batchUpsert(c, ruleLogs.map { MysqlUpsertSql.ruleLogs(it, cfg.vehicleId) })
+                    val nWrites = batchUpsert(c, vehicleWrites.map { MysqlUpsertSql.vehicleWriteLogs(it, cfg.vehicleId) })
+                    val nCounters = batchUpsert(c, counterSnapshots.map { MysqlUpsertSql.counterSnapshots(it, cfg.vehicleId) })
                     val nState = carState?.let { execUpsert(c, MysqlUpsertSql.carState(it, cfg.vehicleId)) } ?: 0
                     val nLogs = batchUpsert(c, logs.map { MysqlUpsertSql.log(it, cfg.vehicleId, LOG_SOURCE) })
                     val nPruned = pruneRetentionDays?.let { pruneLogs(c, cfg.vehicleId, it) } ?: 0
                     val nPrunedState = pruneCarStateDays?.let { pruneCarState(c, cfg.vehicleId, it) } ?: 0
+                    val nPrunedDetail = pruneDetailDays?.let { pruneDetails(c, cfg.vehicleId, it) } ?: 0
                     c.commit()
-                    SyncOutcome(nTrips, nCharges, nSnaps, nState, nLogs, nPruned, nPrunedState)
+                    SyncOutcome(
+                        trips = nTrips, charges = nCharges, batterySnapshots = nSnaps,
+                        carState = nState, logs = nLogs, prunedLogs = nPruned,
+                        prunedCarState = nPrunedState, tripPoints = nTripPoints,
+                        chargePoints = nChargePoints, idleDrains = nIdle, ruleLogs = nRules,
+                        vehicleWrites = nWrites, counterSnapshots = nCounters,
+                        prunedDetails = nPrunedDetail,
+                    )
                 } catch (e: Exception) {
                     runCatching { c.rollback() }
                     throw e
@@ -170,6 +201,27 @@ class MysqlSyncClient @Inject constructor() {
             maxPasses = MAX_CAR_STATE_PRUNE_PASSES,
         )
 
+    /**
+     * One bounded delete per detail table, all riding the same hourly janitor pass as
+     * [pruneLogs]/[pruneCarState]. A single pass each is enough: these tables only grow with
+     * actual use, so the hourly flow far exceeds what the car can generate.
+     */
+    private fun pruneDetails(conn: Connection, vehicleId: String, retentionDays: Int): Int {
+        val statements = listOf(
+            MysqlUpsertSql.tripPointsPrune(vehicleId, retentionDays, DETAIL_PRUNE_BATCH_ROWS),
+            MysqlUpsertSql.chargePointsPrune(vehicleId, retentionDays, DETAIL_PRUNE_BATCH_ROWS),
+            MysqlUpsertSql.idleDrainsPrune(vehicleId, retentionDays, DETAIL_PRUNE_BATCH_ROWS),
+            MysqlUpsertSql.ruleLogsPrune(vehicleId, retentionDays, DETAIL_PRUNE_BATCH_ROWS),
+            MysqlUpsertSql.vehicleWriteLogsPrune(vehicleId, retentionDays, DETAIL_PRUNE_BATCH_ROWS),
+            MysqlUpsertSql.counterSnapshotsPrune(vehicleId, retentionDays, DETAIL_PRUNE_BATCH_ROWS),
+        )
+        var total = 0
+        conn.createStatement().use { st ->
+            for (sql in statements) total += st.executeUpdate(sql)
+        }
+        return total
+    }
+
     private fun pruneInBatches(conn: Connection, sql: String, batchRows: Int, maxPasses: Int): Int {
         var total = 0
         conn.createStatement().use { st ->
@@ -214,6 +266,9 @@ class MysqlSyncClient @Inject constructor() {
         /** At most 5 000 live samples per sync: several days of shrink-back, never one huge delete. */
         private const val MAX_CAR_STATE_PRUNE_PASSES = 5
 
+        /** Per-table ceiling on one detail prune pass; six statements travel together. */
+        private const val DETAIL_PRUNE_BATCH_ROWS = 2_000
+
         /** Rows per rendered `INSERT`: 200 log lines at the 2 000-char cap is ~400 KB, well inside any server's packet limit. */
         private const val MAX_ROWS_PER_STATEMENT = 200
     }
@@ -227,6 +282,13 @@ data class SyncOutcome(
     val logs: Int = 0,
     val prunedLogs: Int = 0,
     val prunedCarState: Int = 0,
+    val tripPoints: Int = 0,
+    val chargePoints: Int = 0,
+    val idleDrains: Int = 0,
+    val ruleLogs: Int = 0,
+    val vehicleWrites: Int = 0,
+    val counterSnapshots: Int = 0,
+    val prunedDetails: Int = 0,
 )
 
 /**

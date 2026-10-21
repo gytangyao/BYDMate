@@ -131,6 +131,7 @@ class ChargesViewModelTest {
     private class StubChargePointDao : ChargePointDao {
         override suspend fun insertAll(points: List<ChargePointEntity>) {}
         override suspend fun getByChargeId(chargeId: Long): List<ChargePointEntity> = emptyList()
+        override suspend fun getForSync(chargeId: Long, pointId: Long, limit: Int): List<ChargePointEntity> = emptyList()
         override suspend fun getCount(): Int = 0
         override suspend fun thinOldPoints(cutoff: Long, intervalMs: Long): Int = 0
     }

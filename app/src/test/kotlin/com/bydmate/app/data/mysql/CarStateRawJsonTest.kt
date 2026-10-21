@@ -1,6 +1,7 @@
 package com.bydmate.app.data.mysql
 
 import com.bydmate.app.BuildConfig
+import com.bydmate.app.data.autoservice.ChargingReading
 import com.bydmate.app.data.remote.DiParsData
 import com.bydmate.app.data.remote.diParsData
 import org.json.JSONObject
@@ -115,6 +116,101 @@ class CarStateRawJsonTest {
         assertFalse(json.has("speed_kmh"))
         assertFalse(json.has("soh_pct"))
         assertFalse(json.has("vehicle_kind"))
+    }
+
+    /**
+     * A running charge has no ChargeEntity yet, so these are the only rows the phone can show
+     * until the gun comes out. Both halves ride in one block: the live fids and the probe.
+     */
+    @Test
+    fun `charge session block carries the live fids and the probe`() {
+        val json = JSONObject(
+            CarStateRawJson.build(
+                diParsData(soc = 50), 4L, sohPct = null, vehicleKind = null,
+                chargeSession = CarStateRawJson.ChargeSessionSnapshot(
+                    live = ChargingReading(
+                        gunConnectState = 2, chargingType = 1, chargeBatteryVoltV = 381,
+                        batteryType = 1, chargingCapacityKwh = 12.3f, bmsState = 1,
+                        readAtMs = 4L, chargerConnectState = 1, chargeConnectIndicator = 2,
+                    ),
+                    probeStartTs = 100L, probeLastTickTs = 200L, probeLastSoc = 55,
+                    probeLastRiseTs = 190L, probePeakKw = 11.4,
+                    probeTempMinC = 27.0, probeTempMaxC = 31.0, probeTempAvgC = 29.0,
+                ),
+            ),
+        )
+
+        val session = json.getJSONObject("charge_session")
+        assertEquals(2, session.getInt("gun_connect_state"))
+        assertEquals(12.3, session.getDouble("charging_capacity_kwh"), 1e-6)
+        assertEquals(2, session.getInt("charge_connect_indicator"))
+        assertEquals(4L, session.getLong("read_at"))
+        assertEquals(100L, session.getLong("probe_start_ts"))
+        assertEquals(55, session.getInt("probe_last_soc_pct"))
+        assertEquals(11.4, session.getDouble("probe_peak_kw"), 1e-9)
+        assertEquals(29.0, session.getDouble("probe_temp_avg_c"), 1e-9)
+    }
+
+    /** With neither a probe nor a live read there is nothing to say; an empty object is noise. */
+    @Test
+    fun `an empty charge session block is omitted`() {
+        val json = JSONObject(
+            CarStateRawJson.build(
+                diParsData(soc = 50), 5L, sohPct = null, vehicleKind = null,
+                chargeSession = CarStateRawJson.ChargeSessionSnapshot(),
+            ),
+        )
+        assertFalse(json.has("charge_session"))
+    }
+
+    /** The open trip: anchors only, so the phone can show distance and SOC use before it closes. */
+    @Test
+    fun `trip live block carries both ends of the running trip`() {
+        val json = JSONObject(
+            CarStateRawJson.build(
+                diParsData(soc = 50), 6L, sohPct = null, vehicleKind = null,
+                tripLive = CarStateRawJson.TripLiveSnapshot(
+                    startTs = 1_000L, startSoc = 81, startMileageKm = 25_000.0,
+                    startTotalElecKwh = 1_234.5, startExteriorTempC = 17,
+                    lastTickTs = 2_000L, lastSoc = 78, lastMileageKm = 25_012.5,
+                    lastTotalElecKwh = 1_236.4,
+                ),
+            ),
+        )
+
+        val trip = json.getJSONObject("trip_live")
+        assertEquals(1_000L, trip.getLong("start_ts"))
+        assertEquals(81, trip.getInt("start_soc_pct"))
+        assertEquals(25_012.5, trip.getDouble("last_mileage_km"), 1e-9)
+        assertFalse("a DM-i-only anchor is absent on an EV", trip.has("start_fuel_total_l"))
+    }
+
+    /** One-shot fids and head-unit facts are namespaced, not flattened into the car's own keys. */
+    @Test
+    fun `extra fids and diagnostics travel in their own blocks`() {
+        val json = JSONObject(
+            CarStateRawJson.build(
+                diParsData(soc = 50), 7L, sohPct = null, vehicleKind = null,
+                extraFids = mapOf("bsdLeft" to 0.0, "lifetimeAvgPhm" to 152.4),
+                diagnostics = CarStateRawJson.DiagnosticsSnapshot(
+                    adbVerdict = "OK", uptimeSeconds = 3_600L, heapUsedMb = 64L, heapMaxMb = 256L,
+                    storageFreeMb = 12_000L, storageTotalMb = 32_000L, networkType = "wifi",
+                    androidRelease = "14", sdkInt = 34, deviceModel = "BYD",
+                    lastSyncTs = 999L,
+                ),
+            ),
+        )
+
+        val extra = json.getJSONObject("extra_fids")
+        assertEquals(0.0, extra.getDouble("bsdLeft"), 1e-9)
+        assertEquals(152.4, extra.getDouble("lifetimeAvgPhm"), 1e-9)
+        val diag = json.getJSONObject("diag")
+        assertEquals("OK", diag.getString("adb_verdict"))
+        assertEquals(3_600L, diag.getLong("uptime_s"))
+        assertEquals("wifi", diag.getString("network"))
+        assertEquals("14", diag.getString("android"))
+        assertEquals(999L, diag.getLong("last_sync_ts"))
+        assertFalse(json.has("bsdLeft"))
     }
 
     @Test
