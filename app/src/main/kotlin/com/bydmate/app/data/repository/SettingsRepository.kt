@@ -176,6 +176,11 @@ open class SettingsRepository @Inject constructor(
         // reconstructed or dismissed. Lets a later catch-up create the row
         // even if the odometer moved before the first successful run.
         const val KEY_CHARGE_PENDING = "charge_pending"
+        // What the detector saw tick by tick while the gun stayed in: session start, last
+        // SOC rise, peak power and battery-temperature range. An overnight charge leaves no
+        // `car_state` rows (the sampling loop sleeps), so this is the only record of when it
+        // ran and how fast — the session row itself is written hours later at the disconnect.
+        const val KEY_CHARGING_SESSION_PROBE = "charging_session_probe"
         // Persistent ring buffer of recent runCatchUp decisions (CatchUpJournal).
         // Included in the diagnostic dump — logcat rotates out the startup
         // window within minutes on DiLink, so field reports need this.

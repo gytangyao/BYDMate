@@ -15,6 +15,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.abs
 
 enum class DetectorState { IDLE, EVALUATING, ERROR }
 
@@ -84,6 +85,13 @@ class AutoserviceChargingDetector @Inject constructor(
         // session; anything longer is multi-day idle and we'd rather bias
         // toward AC tariff anyway (cheaper for the user when uncertain).
         const val MAX_ELAPSED_HOURS = 16.0
+        // A probe older than this is not the same session: an unplug always consumes or
+        // clears it, so a gap this long means the app was dead through an unplug/replug or
+        // the charge ended — either way the trail must not be stitched to the new tick.
+        const val PROBE_GAP_MS = 3 * 3_600_000L
+        // Shortest window worth dividing kWh by. A session whose only SOC rise was the last
+        // tick would otherwise report a four-digit average power.
+        const val MIN_POWER_WINDOW_HOURS = 5.0 / 60.0
         // BMS chargingCapacityKwh sanity gate. The per-session counter has been
         // observed to under-report on overnight AC (counter resets across BMS
         // pause/resume sub-phases — caught a 51% SOC charge as 21.5 kWh in
@@ -218,6 +226,45 @@ class AutoserviceChargingDetector @Inject constructor(
     }
 
     /**
+     * Folds one gun-in tick into the persisted [ChargingStateStore.SessionProbe]. The head
+     * unit sleeps through an overnight charge — no sampling loop, no `car_state` rows — but
+     * the catch-up tick keeps firing, so a battery power and temperature are still readable
+     * each time it does. The row itself is only written at the disconnect.
+     */
+    private suspend fun recordChargingTick(now: Long, soc: Int) {
+        val prev = stateStore.loadProbe()
+        val continuous = prev != null && now - prev.lastTickTs in 1..PROBE_GAP_MS
+        val sample = runCatching { parsReader.fetch() }.getOrNull() ?: lastSample
+        val kw = sample?.power?.takeIf { it.isFinite() }?.let { abs(it) }
+        val temp = sample?.avgBatTemp?.toDouble()?.takeIf { it.isFinite() }
+        val next = if (continuous) {
+            prev!!.copy(
+                lastTickTs = now,
+                lastSoc = soc,
+                lastRiseTs = if (soc > prev.lastSoc) now else prev.lastRiseTs,
+                peakKw = listOfNotNull(prev.peakKw, kw).maxOrNull(),
+                tempMinC = listOfNotNull(prev.tempMinC, temp).minOrNull(),
+                tempMaxC = listOfNotNull(prev.tempMaxC, temp).maxOrNull(),
+                tempSumC = temp?.let { (prev.tempSumC ?: 0.0) + it } ?: prev.tempSumC,
+                tempCount = prev.tempCount + if (temp != null) 1 else 0,
+            )
+        } else {
+            ChargingStateStore.SessionProbe(
+                startTs = now,
+                lastTickTs = now,
+                lastSoc = soc,
+                lastRiseTs = now,
+                peakKw = kw,
+                tempMinC = temp,
+                tempMaxC = temp,
+                tempSumC = temp,
+                tempCount = if (temp != null) 1 else 0,
+            )
+        }
+        stateStore.saveProbe(next)
+    }
+
+    /**
      * Run the cascade detector.
      *
      * @param now            wall-clock time for the row's start/end timestamps.
@@ -328,6 +375,12 @@ class AutoserviceChargingDetector @Inject constructor(
                 // still happened — the pending flag keeps Step 5 from silently
                 // discarding it.
                 stateStore.setChargePending(true)
+                // The session row is written at the disconnect, so this tick is the only
+                // chance to say when the charge began and how it moved. A failed probe read
+                // must not turn "still charging" into an error — the row still gets written,
+                // just with the anchor's bounds.
+                runCatching { recordChargingTick(now, currentSoc) }
+                    .onFailure { android.util.Log.w(TAG, "runCatchUp: session probe failed: ${it.message}") }
                 android.util.Log.i(TAG, "runCatchUp: gun=$gun, deviceReadable=$chargingDeviceReadable → STILL_CHARGING (defer to live edge)")
                 logJournal(now, "STILL_CHARGING gun=$gun" + if (gunGlitch) " glitch=$consecutiveGunGlitches" else "")
                 _state.value = DetectorState.IDLE
@@ -374,6 +427,7 @@ class AutoserviceChargingDetector @Inject constructor(
                     ts = now
                 )
                 stateStore.setChargePending(false)
+                stateStore.clearProbe()
                 _state.value = DetectorState.IDLE
                 return CatchUpResult(CatchUpOutcome.NO_DELTA)
             }
@@ -436,6 +490,21 @@ class AutoserviceChargingDetector @Inject constructor(
             val socStart = prev.socPercent
             val socEnd = currentSoc
 
+            // The window the gun-in ticks recorded. An overnight charge leaves no samples of
+            // its own, so without this the row could only say "it ended now": start and end
+            // both stamped `now`, duration 0, power null. The anchor's timestamp is the
+            // fallback — it is the last moment the car was seen parked before the gun went in.
+            val probe = stateStore.loadProbe()?.takeIf { now - it.lastTickTs in 1..PROBE_GAP_MS }
+            val sessionStart = probe?.startTs?.takeIf { it in 1 until now }
+                ?: prev.ts.takeIf {
+                    it in 1 until now && now - it <= MAX_ELAPSED_HOURS.toLong() * 3_600_000L
+                }
+                ?: now
+            // End of energy transfer, not the unplug: a car left on the charger after
+            // reaching 100% would otherwise report the whole night as charging time.
+            val sessionEnd = probe?.lastRiseTs?.takeIf { it > sessionStart } ?: now
+            val sessionHours = (sessionEnd - sessionStart) / 3_600_000.0
+
             // Real elapsed time since the previous state save — far more
             // accurate for AC/DC heuristic than a fixed 1-hour assumption.
             // Overnight AC of 30 kWh divided by the old 1h constant looked
@@ -454,12 +523,12 @@ class AutoserviceChargingDetector @Inject constructor(
                 ?: classifier.fromObservedPowerKw(observedKwAbs)
                 ?: classifier.heuristicByPower(delta, elapsedHours)
             // Priced through the tariff period covering this session, losses included.
-            val cost = costCalculator.costForNewCharge(startTs = now, type = type, kwhCharged = delta)
+            val cost = costCalculator.costForNewCharge(startTs = sessionStart, type = type, kwhCharged = delta)
 
             // Step 9: build ChargeEntity (lifetimeKwhAtStart/Finish null — legacy columns only)
             val charge = ChargeEntity(
-                startTs = now,
-                endTs = now,
+                startTs = sessionStart,
+                endTs = sessionEnd,
                 socStart = socStart,
                 socEnd = socEnd,
                 kwhCharged = delta,
@@ -469,6 +538,13 @@ class AutoserviceChargingDetector @Inject constructor(
                 status = "COMPLETED",
                 lifetimeKwhAtStart = null,
                 lifetimeKwhAtFinish = null,
+                maxPowerKw = probe?.peakKw,
+                avgPowerKw = if (probe != null && delta > 0.0 && sessionHours >= MIN_POWER_WINDOW_HOURS) {
+                    delta / sessionHours
+                } else null,
+                batTempAvg = probe?.tempAvgC,
+                batTempMax = probe?.tempMaxC,
+                batTempMin = probe?.tempMinC,
                 gunState = charging?.gunConnectState?.takeIf { it != GUN_STATE_NONE },
                 detectionSource = detectionSource
             )
@@ -510,6 +586,7 @@ class AutoserviceChargingDetector @Inject constructor(
                 ts = now
             )
             stateStore.setChargePending(false)
+            stateStore.clearProbe()
 
             val kmNow = battery?.lifetimeMileageKm?.let { "%.1f".format(it) } ?: "?"
             val kmPrev = prev.mileageKm?.let { "%.1f".format(it) } ?: "?"
@@ -519,7 +596,8 @@ class AutoserviceChargingDetector @Inject constructor(
             logJournal(
                 now,
                 "SESSION_CREATED kwh=${"%.2f".format(delta)} src=$detectionSource " +
-                    "type=$type soc=$socStart->$socEnd km=$kmNow prev_km=$kmPrev plug=$plugInfo"
+                    "type=$type soc=$socStart->$socEnd km=$kmNow prev_km=$kmPrev plug=$plugInfo " +
+                    "win=${"%.1f".format(sessionHours)}h peak=${probe?.peakKw?.let { "%.1f".format(it) } ?: "?"}"
             )
             _state.value = DetectorState.IDLE
             return CatchUpResult(CatchUpOutcome.SESSION_CREATED, chargeId, delta)

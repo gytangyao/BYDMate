@@ -116,7 +116,7 @@ class AutoserviceChargingDetectorTest {
     }
 
     private class FakeParsReader(
-        private val data: DiParsData? = null
+        var data: DiParsData? = null
     ) : ParsReader {
         override suspend fun fetch(): DiParsData? = data
     }
@@ -142,7 +142,8 @@ class AutoserviceChargingDetectorTest {
         val snapshotDao: RecordingBatterySnapshotDao,
         val stateStore: ChargingStateStore,
         val auto: FakeAutoservice,
-        val journal: CatchUpJournal
+        val journal: CatchUpJournal,
+        val pars: FakeParsReader
     )
 
     /**
@@ -164,6 +165,7 @@ class AutoserviceChargingDetectorTest {
         autoserviceAvailable: Boolean = true,
         homeTariff: Double = 0.20,
         dcTariff: Double = 0.73,
+        capacityKwh: Double? = null,
         diParsData: DiParsData? = null
     ): TestSetup {
         val auto = FakeAutoservice(battery, charging, autoserviceAvailable)
@@ -175,6 +177,9 @@ class AutoserviceChargingDetectorTest {
         val initialMap = buildMap {
             put(SettingsRepository.KEY_HOME_TARIFF, homeTariff.toString())
             put(SettingsRepository.KEY_DC_TARIFF, dcTariff.toString())
+            if (capacityKwh != null) {
+                put(SettingsRepository.KEY_BATTERY_CAPACITY, capacityKwh.toString())
+            }
             if (prevSoc != null) {
                 put(SettingsRepository.KEY_CHARGING_BASELINE_SOC, prevSoc.toString())
             }
@@ -193,6 +198,7 @@ class AutoserviceChargingDetectorTest {
         val stateStore = ChargingStateStore(settings)
         val journal = CatchUpJournal(settings)
         val classifier = ChargingTypeClassifier()
+        val pars = FakeParsReader(diParsData)
         val detector = AutoserviceChargingDetector(
             client = auto,
             chargeRepo = chargeRepo,
@@ -201,10 +207,10 @@ class AutoserviceChargingDetectorTest {
             classifier = classifier,
             settings = settings,
             costCalculator = mockk(relaxed = true),
-            parsReader = FakeParsReader(diParsData),
+            parsReader = pars,
             journal = journal
         )
-        return TestSetup(detector, dao, snapshotDao, stateStore, auto, journal)
+        return TestSetup(detector, dao, snapshotDao, stateStore, auto, journal, pars)
     }
 
     /** DiParsData carrying only the fields recordParkedAnchor reads (gun defaults to NONE=1). */
@@ -1491,5 +1497,107 @@ class AutoserviceChargingDetectorTest {
 
         assertFalse(setup.detector.recordParkedAnchor(sample, now = 2000L))
         assertEquals(40, setup.stateStore.load().socPercent)
+    }
+
+    // --- sleep-charge window: what the ticks leave behind ---
+
+    private fun tickSample(soc: Int, power: Double, temp: Int) =
+        parkedSample(soc = soc).copy(power = power, avgBatTemp = temp)
+
+    @Test
+    fun `a ticked session opens at the first gun-in tick and closes at the last SOC rise`() = runTest {
+        val base = 1_700_000_000_000L
+        val minute = 60_000L
+        val setup = build(
+            battery = battery(soc = 43f, mileage = 25215f),
+            charging = charging(gunState = 2),
+            prevSoc = 42,
+            prevMileageKm = 25215f,
+            prevTs = base - 60 * minute,
+            capacityKwh = 10.08,
+            diParsData = tickSample(soc = 43, power = -3.2, temp = 25),
+        )
+
+        assertEquals(CatchUpOutcome.STILL_CHARGING, setup.detector.runCatchUp(now = base).outcome)
+
+        setup.auto.battery = battery(soc = 61f, mileage = 25215f)
+        setup.pars.data = tickSample(soc = 61, power = -3.4, temp = 27)
+        assertEquals(
+            CatchUpOutcome.STILL_CHARGING,
+            setup.detector.runCatchUp(now = base + 30 * minute).outcome,
+        )
+
+        setup.auto.battery = battery(soc = 100f, mileage = 25215f)
+        setup.pars.data = tickSample(soc = 100, power = -3.1, temp = 29)
+        assertEquals(
+            CatchUpOutcome.STILL_CHARGING,
+            setup.detector.runCatchUp(now = base + 60 * minute).outcome,
+        )
+
+        // Full, still plugged in for another half hour: that is not charging time.
+        setup.pars.data = tickSample(soc = 100, power = -0.2, temp = 30)
+        setup.detector.runCatchUp(now = base + 90 * minute)
+
+        setup.auto.charging = charging(gunState = 1)
+        val result = setup.detector.runCatchUp(now = base + 180 * minute)
+
+        assertEquals(CatchUpOutcome.SESSION_CREATED, result.outcome)
+        val row = setup.chargeDao.inserted.single()
+        assertEquals(base, row.startTs)
+        assertEquals(base + 60 * minute, row.endTs)
+        assertNotNull(row.kwhCharged)
+        assertEquals(row.kwhCharged!! / 1.0, row.avgPowerKw!!, 1e-6)
+        assertEquals(3.4, row.maxPowerKw!!, 1e-6)
+        assertEquals(27.75, row.batTempAvg!!, 1e-6)
+        assertEquals(25.0, row.batTempMin!!, 1e-6)
+        assertEquals(30.0, row.batTempMax!!, 1e-6)
+        assertNull("the trail must not outlive the row it explains", setup.stateStore.loadProbe())
+    }
+
+    @Test
+    fun `a probe older than the gap is not stitched onto the next session`() = runTest {
+        val base = 1_700_000_000_000L
+        val setup = build(
+            battery = battery(soc = 50f, mileage = 25215f),
+            charging = charging(gunState = 2),
+            prevSoc = 42,
+            prevMileageKm = 25215f,
+            prevTs = base - 60_000L,
+            capacityKwh = 10.08,
+            diParsData = tickSample(soc = 50, power = -3.0, temp = 26),
+        )
+        setup.detector.runCatchUp(now = base)
+
+        // Four hours of silence, then the gun is seen in again: whatever ran before is a
+        // different session, so the window must start here, not at base.
+        val restart = base + 4 * 3_600_000L
+        setup.auto.battery = battery(soc = 100f, mileage = 25215f)
+        setup.detector.runCatchUp(now = restart)
+        setup.auto.charging = charging(gunState = 1)
+        setup.detector.runCatchUp(now = restart + 60_000L)
+
+        assertEquals(restart, setup.chargeDao.inserted.single().startTs)
+    }
+
+    @Test
+    fun `without a probe the row still opens at the parked anchor`() = runTest {
+        val base = 1_700_000_000_000L
+        val setup = build(
+            battery = battery(soc = 100f, mileage = 25215f),
+            charging = charging(gunState = 1),
+            prevSoc = 42,
+            prevMileageKm = 25215f,
+            prevTs = base - 2 * 3_600_000L,
+            capacityKwh = 10.08,
+        )
+
+        val result = setup.detector.runCatchUp(now = base)
+
+        assertEquals(CatchUpOutcome.SESSION_CREATED, result.outcome)
+        val row = setup.chargeDao.inserted.single()
+        assertEquals(base - 2 * 3_600_000L, row.startTs)
+        assertEquals(base, row.endTs)
+        assertNull("an unobserved session must not claim a power it never measured", row.avgPowerKw)
+        assertNull(row.maxPowerKw)
     }
 }
