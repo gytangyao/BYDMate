@@ -81,4 +81,22 @@ class UpsertRenderTest {
         assertTrue(sql, sql.contains("'ev''''"))
         assertTrue(sql, sql.endsWith("LIMIT 5000"))
     }
+
+    /**
+     * The live sample table grows at a fixed rate, so its ceiling is three months of rows, and the
+     * filter has to stay on the indexed columns: `vehicle_id` plus `pushed_at`.
+     */
+    @Test fun `car state pruning keeps three months up to the batch limit`() {
+        val sql = MysqlUpsertSql.carStatePrune("byd-1", 90, 1_000)
+        assertTrue(sql, sql.startsWith("DELETE FROM `car_state`"))
+        assertTrue(sql, sql.contains("`vehicle_id` = 'byd-1'"))
+        assertTrue(sql, sql.contains("`pushed_at` < (UNIX_TIMESTAMP() - 7776000) * 1000"))
+        assertTrue(sql, sql.endsWith("LIMIT 1000"))
+    }
+
+    @Test fun `car state pruning quotes the vehicle id`() {
+        val sql = MysqlUpsertSql.carStatePrune("ev''); DROP TABLE car_state; -- '", 90, 1_000)
+        assertTrue(sql, sql.contains("'ev''''"))
+        assertTrue(sql, sql.endsWith("LIMIT 1000"))
+    }
 }

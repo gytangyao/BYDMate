@@ -80,7 +80,7 @@ The main changes in version 4.0.0.
 | **Backup** | Configuration backup | Trips, charges, settings, and keys in one archive in Download, restore by parts, scheduled auto-save with a copy in your Telegram bot |
 | **Share** | Automation sharing | A rule saved to a file without phone numbers, contacts, or your places; import someone else's rule with a preview |
 | **Aa** | Text size | Normal, large, or extra large text on the app screens and in the voice agent windows |
-| **Hub** | Phone companion | Trips, charges, battery snapshots, live state and log lines are written into a MySQL server you own; the BydMate_Mobile phone app reads the same database. Log rows keep 30 days, automatically |
+| **Hub** | Phone companion | Trips, charges, battery snapshots, live state and log lines are written into a MySQL server you own; the BydMate_Mobile phone app reads the same database. Log rows keep 30 days, live samples 3 months, both pruned automatically |
 
 ---
 
@@ -873,12 +873,13 @@ The head unit can write its own data into a MySQL server **you** run, and the By
 | What is written | How often | What happens on a repeat |
 |---|---|---|
 | Trips, charges, battery snapshots | once per ignition (skipped when the last successful run is under 5 min old), plus a manual "Sync now" | the whole set is re-upserted against the `(vehicle_id, id)` key — syncing the same trip a hundred times still leaves one row |
-| Live state | every 30 s while driving | append-only, the phone reads the newest 200 rows |
+| Live state | every 30 s while driving; kept for 3 months | append-only, the phone reads the newest 200 rows |
 | Log lines | carried along by both channels above | append-only; `source` is `car` or `phone`, both apps share this one table |
 
 - **Lifetime charged kWh and equivalent full cycles are computed by the car, not the phone.** The phone only ever reads the last 200 rows, so a sum it makes itself can never be a lifetime figure. The car prefers the BMS lifetime charging counter (`charged_scope=bms`) and falls back to the sessions this app recorded (`charged_scope=app`); the phone labels which of the two it is showing.
 - **Battery health (SoH) comes from the BMS, not from the charge log.** The car reads the `soh` value on every live-state push, so the phone shows a figure even on a car that has never had a charge recorded (recording one takes at least a 5 % SOC rise). While the BMS answers a sentinel — which it does right after a full charge — the newest charge snapshot is used instead, and anything outside 50…100 % is not written at all, so the phone shows a dash rather than an invented number.
 - **Logs keep 30 days, on their own.** Every sync also drops expired log rows: at most 5 000 rows per statement, at most 10 statements in a row, the rest next time. The cutoff comes from the **database server's clock**, not the head unit's — a DiLink that has not corrected its time yet would otherwise delete everything or nothing, silently, and nobody would notice. The car prunes the phone's rows too; the phone only ever writes, so that table would grow forever otherwise.
+- **Live samples keep 3 months, also on their own.** `car_state` is the only table that grows at a fixed rate: one row every 30 s, each carrying the full raw snapshot, while the phone only reads the newest rows. Expired rows are deleted 1 000 at a time, at most 5 batches per pass, inside the same transaction and against the same server clock. Trips, charges and battery snapshots are never deleted — they grow with usage.
 - **One connection, always.** A permit gate inside the app means this process holds at most one hub session at a time (the server reaps idle ones after 45 s as a backstop), and every statement is bounded by `LIMIT` or by chunking, so a sync cannot squat on that session.
 - The schema is `db/schema.sql`; one run creates all five tables. The hub account needs `SELECT / INSERT / UPDATE / DELETE` only — no CREATE or ALTER.
 

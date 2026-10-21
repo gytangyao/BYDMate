@@ -150,6 +150,20 @@ internal object MysqlUpsertSql {
         "DELETE FROM `app_logs` WHERE `vehicle_id` = ${SqlLiteral.of(vehicleId)} " +
             "AND `ts` < (UNIX_TIMESTAMP() - ${retentionDays.toLong() * 86_400L}) * 1000 " +
             "LIMIT $limit"
+
+    /**
+     * The rolling delete that keeps `car_state` to [retentionDays] of live samples.
+     *
+     * This is the one append-only table that grows with time rather than with trips: a row every
+     * 30 s with the whole raw payload behind it. The phone reads the newest rows only, so an old
+     * sample has no reader left. The cutoff is the server's clock for the same reason as
+     * [logPrune]: a head unit that boots before its clock is corrected must not decide what to
+     * delete. `(vehicle_id, pushed_at)` is the table's index, so the range delete stays cheap.
+     */
+    fun carStatePrune(vehicleId: String, retentionDays: Int, limit: Int): String =
+        "DELETE FROM `car_state` WHERE `vehicle_id` = ${SqlLiteral.of(vehicleId)} " +
+            "AND `pushed_at` < (UNIX_TIMESTAMP() - ${retentionDays.toLong() * 86_400L}) * 1000 " +
+            "LIMIT $limit"
 }
 
 /**

@@ -1468,7 +1468,27 @@ class TrackingService : Service(), LocationListener {
                     cabinTempC = data.insideTemp?.toDouble(),
                     odometerKm = data.mileage,
                     totals = totals,
-                    rawJson = null,
+                    // The typed columns are the dashboard subset; this carries every field the
+                    // polling loop already has, so a new consumer needs no schema change.
+                    rawJson = com.bydmate.app.data.mysql.CarStateRawJson.build(
+                        data = data,
+                        pushedAt = nowMs,
+                        sohPct = sohPct,
+                        vehicleKind = vehicleKindMonitor.kind.value.name,
+                        location = lastLocationFix?.let { fix ->
+                            val l = fix.location
+                            com.bydmate.app.data.mysql.CarStateRawJson.CarLocationSnapshot(
+                                latitude = l.latitude,
+                                longitude = l.longitude,
+                                ageMs = (nowMs - l.time).coerceAtLeast(0L),
+                                live = fix.isLive,
+                                accuracyM = l.accuracy.takeIf { l.hasAccuracy() }?.toDouble(),
+                                headingDeg = l.bearing.takeIf { l.hasBearing() }?.toDouble(),
+                                speedMps = l.speed.takeIf { l.hasSpeed() }?.toDouble(),
+                                altitudeM = l.altitude.takeIf { l.hasAltitude() },
+                            )
+                        },
+                    ),
                 )
                 mysqlSyncRepository.pushCarState(snapshot)
                     .onSuccess { mysqlCarStateLastPushMs = nowMs }

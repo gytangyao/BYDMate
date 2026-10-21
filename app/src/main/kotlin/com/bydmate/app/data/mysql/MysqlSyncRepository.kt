@@ -37,13 +37,17 @@ class MysqlSyncRepository @Inject constructor(
         val snapshots = batterySnapshotDao.getAllSnapshot()
         val logs = logCollector.pendingBatch()
         val now = System.currentTimeMillis()
-        val pruneDays = pruneDue(now)
+        val prune = pruneDue(now)
         Log.i(TAG, "syncing ${trips.size} trips, ${charges.size} charges, ${snapshots.size} snapshots, ${logs.size} log lines")
-        val outcome = client.syncAll(cfg, trips, charges, snapshots, carState = null, logs = logs, pruneRetentionDays = pruneDays)
+        val outcome = client.syncAll(
+            cfg, trips, charges, snapshots, carState = null, logs = logs,
+            pruneRetentionDays = if (prune) LOG_RETENTION_DAYS else null,
+            pruneCarStateDays = if (prune) CAR_STATE_RETENTION_DAYS else null,
+        )
         outcome.onSuccess {
             settingsRepository.setMysqlLastSyncTs(now)
             logCollector.markShipped(logs)
-            if (pruneDays != null) {
+            if (prune) {
                 settingsRepository.setString(SettingsRepository.KEY_MYSQL_LOG_PRUNED_TS, now.toString())
             }
         }.onFailure { Log.w(TAG, "sync failed: ${it.message}") }
@@ -93,19 +97,19 @@ class MysqlSyncRepository @Inject constructor(
         settingsRepository.getString(SettingsRepository.KEY_MYSQL_ENABLED, "true") != "false"
 
     /**
-     * Log rows older than [LOG_RETENTION_DAYS] are dropped on at most one sync per
-     * [PRUNE_INTERVAL_MS], from the same transaction that writes new ones — a separate pruning job
-     * would be a second hub session for no benefit. Null when a pass isn't due.
+     * The janitor pass — old `app_logs` lines and old `car_state` samples — runs on at most one
+     * sync per [PRUNE_INTERVAL_MS], from the same transaction that writes new rows: a separate
+     * pruning job would be a second hub session for no benefit. False when a pass isn't due.
      *
      * The cadence is hourly rather than daily because a pass deletes at most [MysqlSyncClient]'s
-     * 5 000 rows per statement: a hub that has run for a month has far more to drop, and a daily
-     * pass would delete slower than two apps write.
+     * batch per statement: a hub that has run for a month has far more to drop, and a daily pass
+     * would delete slower than the apps write. The stamp is one for both tables, so the two
+     * deletes always travel together.
      */
-    private suspend fun pruneDue(now: Long): Int? {
+    private suspend fun pruneDue(now: Long): Boolean {
         val lastPruned = settingsRepository.getString(SettingsRepository.KEY_MYSQL_LOG_PRUNED_TS, "0")
             .toLongOrNull() ?: 0L
-        if (now - lastPruned < PRUNE_INTERVAL_MS) return null
-        return LOG_RETENTION_DAYS
+        return now - lastPruned >= PRUNE_INTERVAL_MS
     }
 
     companion object {
@@ -114,5 +118,13 @@ class MysqlSyncRepository @Inject constructor(
 
         /** How far back `app_logs` is kept on the hub: one month, counting both writers' rows. */
         private const val LOG_RETENTION_DAYS = 30
+
+        /**
+         * How far back live `car_state` samples are kept: three months, the longest the owner wants
+         * retained. This is the one table that grows at a fixed rate (a sample every 30 s, each
+         * carrying the full raw snapshot), so it is the one that needs a ceiling; trips, charges
+         * and battery snapshots grow with usage and stay.
+         */
+        private const val CAR_STATE_RETENTION_DAYS = 90
     }
 }
