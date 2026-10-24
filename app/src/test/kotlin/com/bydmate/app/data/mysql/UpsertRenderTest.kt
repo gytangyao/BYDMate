@@ -117,6 +117,28 @@ class UpsertRenderTest {
         assertFalse("the key columns must not be in the update set", sql.contains("`id`=VALUES"))
     }
 
+    /**
+     * The detail tables have no `row_version` column, so the shared renderer must not bump one:
+     * naming it in the update set fails the whole batch on the hub and rolls back every table in
+     * the same transaction.
+     */
+    @Test fun `a detail table upsert never mentions row_version`() {
+        val sql = MysqlUpsertSql.tripPoints(
+            TripPointEntity(id = 9L, tripId = 4L, timestamp = 123L, lat = 1.5, lon = 2.5),
+            "byd-1",
+        ).render()
+        assertFalse(sql, sql.contains("row_version"))
+
+        val write = MysqlUpsertSql.vehicleWriteLogs(
+            VehicleWriteLogEntity(
+                id = 1L, ts = 2L, actionName = "lock", dev = 3, fid = 4, requested = 1,
+                readback = 1, status = 0, error = null, validated = true,
+            ),
+            "byd-1",
+        ).render()
+        assertFalse(write, write.contains("row_version"))
+    }
+
     /** MySQL has no boolean type on this path: it must travel as an integer, not `true`/`false`. */
     @Test fun `a vehicle write ships its validated flag as an integer`() {
         fun sql(validated: Boolean) = MysqlUpsertSql.vehicleWriteLogs(

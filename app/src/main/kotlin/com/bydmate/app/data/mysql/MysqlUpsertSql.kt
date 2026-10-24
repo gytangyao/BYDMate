@@ -300,8 +300,8 @@ data class Upsert(
 
     companion object {
         /**
-         * `INSERT INTO t (a, b) VALUES (…), (…) ON DUPLICATE KEY UPDATE a=VALUES(a), …` with
-         * `row_version` self-incremented.
+         * `INSERT INTO t (a, b) VALUES (…), (…) ON DUPLICATE KEY UPDATE a=VALUES(a), …`, bumping
+         * `row_version` only for the tables that carry the column.
          *
          * Values are inlined as literals because a batch of them is the only way to keep one
          * statement per table: [java.sql.PreparedStatement] cannot even be loaded on Android (see
@@ -327,7 +327,14 @@ data class Upsert(
             val updates = first.columns
                 .filter { it !in key && it != "row_version" }
                 .joinToString(", ") { "`$it`=VALUES(`$it`)" }
-            return "$base ON DUPLICATE KEY UPDATE $updates, `row_version`=`row_version`+1"
+            // Only the tables that carry the stamp can bump it: the six detail tables
+            // (trip points, charge points, idle drains, rule logs, write log, counter
+            // snapshots) have no row_version column, and naming it there fails every batch.
+            return if ("row_version" in first.columns) {
+                "$base ON DUPLICATE KEY UPDATE $updates, `row_version`=`row_version`+1"
+            } else {
+                "$base ON DUPLICATE KEY UPDATE $updates"
+            }
         }
     }
 }
