@@ -43,6 +43,21 @@ class LogShippingTest {
     }
 
     @Test
+    fun `the dump asks for a wide tail and offers a pid-filtered fallback`() {
+        val variants = CarLogCollector.logcatArgVariants(pid)
+        assertEquals(3, variants.size)
+        // An 800-line system tail covers ~half a minute on this head unit: it can hold zero app
+        // lines, which is exactly how app_logs went blind in 2026-10-20..25.
+        assertTrue(variants.map { it.second.last().toInt() }.all { it >= 4000 })
+        // uid stays first: it survives a process restart, so a crashed run's lines still ship.
+        assertTrue(variants.first().second.toList().contains("uid"))
+        val pidArgs = variants.single { it.second.any { a -> a == "--pid=$pid" } }.second
+        assertFalse("logd already filtered by pid, a uid column cannot be parsed", pidArgs.toList().contains("uid"))
+        // Vendors that reject both modifiers still get a plain dump.
+        assertEquals(listOf("logcat", "-d", "-v", "threadtime", "-t", "4000"), variants.last().second.toList())
+    }
+
+    @Test
     fun `folds a stack trace into the line that threw it`() {
         val lines = listOf(
             ours("E", "TripTracker", "java.lang.IllegalStateException: no session"),

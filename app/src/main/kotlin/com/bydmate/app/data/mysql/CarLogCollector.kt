@@ -91,7 +91,7 @@ class CarLogCollector @Inject constructor(
 
         val kept = LogcatLogFormat.selectWithContext(parsed, minRank, CONTEXT_LINES)
         // Nothing crossed the threshold, but the window has been read: park the cursor there so the
-        // next dump starts after it instead of re-parsing the same 800 lines every 30 s.
+        // next dump starts after it instead of re-parsing the same tail at every flush.
         if (kept.isEmpty()) {
             settingsRepository.setString(SettingsRepository.KEY_MYSQL_LOG_CURSOR_TS, parsed.last().ts.toString())
             return emptyList()
@@ -166,19 +166,24 @@ class CarLogCollector @Inject constructor(
     private suspend fun dump(): List<ParsedLog> {
         val myUid = android.os.Process.myUid()
         val myPid = android.os.Process.myPid()
-        for (args in LOGCAT_ARG_VARIANTS) {
+        val tried = ArrayList<String>()
+        for ((name, args) in logcatArgVariants(myPid)) {
             val lines = runCatching {
                 val process = exec(args)
                 val out = process.inputStream.bufferedReader().use { it.readText() }
                 val err = process.errorStream.bufferedReader().use { it.readText() }
                 if (!process.waitFor(LOGCAT_TIMEOUT_MS, TimeUnit.MILLISECONDS)) process.destroyForcibly()
-                if (out.isBlank()) Log.w(TAG, "logcat `${args.joinToString(" ")}` empty: ${err.take(200)}")
+                if (out.isBlank()) Log.w(TAG, "logcat `$name` empty: ${err.take(200)}")
                 out.lineSequence().map { it.trimEnd() }.toList()
             }.getOrDefault(emptyList())
             val parsed = LogcatLogFormat.collapse(lines, myUid, myPid, MysqlUpsertSql.MAX_LOG_MSG_CHARS)
             if (parsed.isNotEmpty()) return parsed
-            if (lines.isNotEmpty()) Log.w(TAG, "logcat gave ${lines.size} lines, none matched the header format")
+            // "4000 lines, none ours" (logd was read fine, the window simply had no app line) reads
+            // very differently from "0 lines" (the modifier was rejected or the ring is empty), so
+            // both are recorded.
+            tried += "$name=${lines.size}"
         }
+        Log.w(TAG, "logcat: no own lines in any variant, dumped: ${tried.joinToString(", ")}")
         return emptyList()
     }
 
@@ -273,10 +278,19 @@ class CarLogCollector @Inject constructor(
         private const val JOURNAL_PREFIX = "catch-up verdicts: "
         private const val JOURNAL_SEPARATOR = " | "
 
-        /** `-t` bounds the dump: newest lines are the interesting ones and the ring is ~256 KB. */
-        internal val LOGCAT_ARG_VARIANTS = arrayOf(
-            arrayOf("logcat", "-d", "-v", "uid", "-v", "threadtime", "-v", "year", "-t", "800"),
-            arrayOf("logcat", "-d", "-v", "threadtime", "-t", "800"),
+        /**
+         * Bounded dumps tried in order until one contains a line of this process. `-t 4000` rather
+         * than 800: this car writes ~30 system lines a second, so an 800-line tail covers under
+         * half a minute and routinely held no BYDMate line at all — the remote `app_logs` only ever
+         * saw the collector's own warning. The uid variant goes first because the uid survives a
+         * process restart, so the previous run's lines (the ones that explain a crash) are still
+         * ours; `--pid` makes logd do the filtering; the plain dump is the last resort for builds
+         * that reject the modifiers.
+         */
+        internal fun logcatArgVariants(pid: Int): List<Pair<String, Array<String>>> = listOf(
+            "uid" to arrayOf("logcat", "-d", "-v", "uid", "-v", "threadtime", "-v", "year", "-t", "4000"),
+            "pid" to arrayOf("logcat", "-d", "--pid=$pid", "-v", "threadtime", "-t", "4000"),
+            "plain" to arrayOf("logcat", "-d", "-v", "threadtime", "-t", "4000"),
         )
     }
 }
