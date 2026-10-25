@@ -254,10 +254,21 @@ class TrackingService : Service(), LocationListener {
     // instead of one per second while driving.
     @Volatile private var webhookCooldownUntilMs: Long = 0L
 
-    // MySQL live-dashboard push: one car_state row per 30 s while the sampling loop runs, so the
-    // phone's "current" card stays fresh without hammering the hub on every 1 Hz tick.
-    @Volatile private var mysqlCarStateLastPushMs: Long = 0L
+    // MySQL live-dashboard push, change-driven: a row goes out only when the vehicle state differs
+    // from the last written one, floored so the 1 Hz drive tick cannot turn into a 1 Hz hub write.
+    // Elapsed-realtime stamps keep the schedule immune to wall-clock corrections.
+    @Volatile private var mysqlCarStateLastPushElapsedMs: Long = 0L
+    @Volatile private var mysqlCarStateLastFingerprint: String? = null
+    @Volatile private var mysqlCarStateRetryAtElapsedMs: Long = 0L
     private val mysqlCarStateInFlight = java.util.concurrent.atomic.AtomicBoolean(false)
+    // Ancillary blocks do not drive the change decision and cost Binder/ADB or Room reads, so they
+    // refresh on their own slower cadences.
+    @Volatile private var mysqlSohCache: Cached<Double?>? = null
+    @Volatile private var mysqlExtraFidsCache: Cached<Map<String, Double>>? = null
+    @Volatile private var mysqlChargeBlockCache:
+        Cached<com.bydmate.app.data.mysql.CarStateRawJson.ChargeSessionSnapshot?>? = null
+
+    private data class Cached<T>(val atMs: Long, val value: T)
 
     // Lifetime charging figures ride the same row. Summing every logged session is a Room scan, so
     // it is refreshed on its own slower cadence instead of once per dashboard push.
@@ -326,10 +337,22 @@ class TrackingService : Service(), LocationListener {
         // car/system toggles the settings screen edits.
         private const val QUIET_CHANNEL_ID = "bydmate_tracking_quiet"
         const val KEY_QUIET_NOTIFICATION = "quiet_notification"
-        /** How often the live `car_state` row is appended to the MySQL hub while sampling. */
-        private const val MYSQL_CAR_STATE_INTERVAL_MS = 30_000L
+        /**
+         * Floor between two live `car_state` rows. The sampling loop runs at 1 Hz while driving and
+         * most of its fields change every tick, so without a floor "push on change" would mean
+         * "push every second"; 2 s keeps the dashboard effectively live while halving the writes.
+         */
+        private const val MYSQL_CAR_STATE_MIN_GAP_MS = 2_000L
+        /** After a failed write, wait this long before trying again, changed state or not. */
+        private const val MYSQL_CAR_STATE_RETRY_COOLDOWN_MS = 30_000L
         /** How often the lifetime-charging inputs behind that row are re-read from Room. */
         private const val MYSQL_TOTALS_TTL_MS = 5 * 60_000L
+        /** SoH is a BMS/ADB read per push; the value moves on the scale of a charge, not a tick. */
+        private const val MYSQL_SOH_TTL_MS = 5 * 60_000L
+        /** One-shot fids for the raw block: diagnostics-grade data, not worth a read per push. */
+        private const val MYSQL_EXTRA_FIDS_TTL_MS = 60_000L
+        /** The charge probe plus live charging fids behind the raw block. */
+        private const val MYSQL_CHARGE_BLOCK_TTL_MS = 30_000L
         private const val MB = 1024L * 1024L
         // Throttle autoservice gun-state read so we don't hit Binder/ADB on every
         // poll tick. 5 ticks ≈ 15 s — fast enough that the user sees a row
@@ -1435,25 +1458,41 @@ class TrackingService : Service(), LocationListener {
     }
 
     /**
-     * Appends one `car_state` row to the MySQL hub every [MYSQL_CAR_STATE_INTERVAL_MS] so the phone
-     * shows a near-live dashboard. Cheap to skip: when sync is disabled or a push is already in
-     * flight, or the interval hasn't elapsed, it returns without touching the network. SoH isn't a
-     * DiPars field, so it comes from the BMS's own `soh` fid — one read per push — with the newest
-     * battery snapshot behind it for the seconds that fid answers a sentinel.
+     * Appends a `car_state` row to the MySQL hub when the car's state has something new to say.
+     *
+     * The row is written only when [com.bydmate.app.data.mysql.CarStateFingerprint] differs from
+     * the last successfully written one, at most once per [MYSQL_CAR_STATE_MIN_GAP_MS]; a car that
+     * has not changed writes nothing, so an idle night costs the hub zero rows. A failed write
+     * holds off [MYSQL_CAR_STATE_RETRY_COOLDOWN_MS] and leaves the last fingerprint in place, so
+     * the change that failed is retried rather than lost.
+     *
+     * Cheap to skip: a push already in flight refuses overlap, and the fingerprint decision happens
+     * before any network or ancillary read. SoH isn't a DiPars field, so it comes from the BMS's own
+     * `soh` fid, cached for [MYSQL_SOH_TTL_MS], with the newest battery snapshot behind it for the
+     * seconds that fid answers a sentinel.
      */
     private fun maybePushMysqlCarState(data: DiParsData, nowMs: Long) {
         if (!mysqlCarStateInFlight.compareAndSet(false, true)) return
-        if (nowMs - mysqlCarStateLastPushMs < MYSQL_CAR_STATE_INTERVAL_MS) {
-            mysqlCarStateInFlight.set(false)
-            return
-        }
         serviceScope.launch {
             try {
                 if (!mysqlSyncRepository.isEnabled()) return@launch
-                val sohPct = resolveSohPct(
-                    liveBmsSohPercent = runCatching { autoserviceClient.readSohPercent() }.getOrNull(),
-                    newestSnapshotSohPercent = mysqlSyncRepository.latestSohPct(),
+                val elapsed = SystemClock.elapsedRealtime()
+                if (elapsed < mysqlCarStateRetryAtElapsedMs) return@launch
+                val fix = lastLocationFix
+                val fingerprint = com.bydmate.app.data.mysql.CarStateFingerprint.of(
+                    data = data,
+                    latitude = fix?.location?.latitude,
+                    longitude = fix?.location?.longitude,
+                    locationLive = fix?.isLive == true,
                 )
+                // 0 means "no push since this service started", not a timestamp an hour ago.
+                if (mysqlCarStateLastPushElapsedMs != 0L) {
+                    if (fingerprint == mysqlCarStateLastFingerprint) return@launch
+                    val sinceLastPush = elapsed - mysqlCarStateLastPushElapsedMs
+                    if (sinceLastPush < MYSQL_CAR_STATE_MIN_GAP_MS) return@launch
+                }
+
+                val sohPct = resolveSohCached(nowMs)
                 val totals = chargingTotals(
                     bmsLifetimeKwh = data.totalElecConsumption,
                     appChargedKwh = appChargedKwhForMysql(nowMs),
@@ -1481,35 +1520,71 @@ class TrackingService : Service(), LocationListener {
                         pushedAt = nowMs,
                         sohPct = sohPct,
                         vehicleKind = vehicleKindMonitor.kind.value.name,
-                        location = lastLocationFix?.let { fix ->
-                            val l = fix.location
+                        location = fix?.let {
+                            val l = it.location
                             com.bydmate.app.data.mysql.CarStateRawJson.CarLocationSnapshot(
                                 latitude = l.latitude,
                                 longitude = l.longitude,
                                 ageMs = (nowMs - l.time).coerceAtLeast(0L),
-                                live = fix.isLive,
+                                live = it.isLive,
                                 accuracyM = l.accuracy.takeIf { l.hasAccuracy() }?.toDouble(),
                                 headingDeg = l.bearing.takeIf { l.hasBearing() }?.toDouble(),
                                 speedMps = l.speed.takeIf { l.hasSpeed() }?.toDouble(),
                                 altitudeM = l.altitude.takeIf { l.hasAltitude() },
                             )
                         },
-                        chargeSession = chargeSessionBlock(),
+                        chargeSession = chargeSessionBlockCached(nowMs),
                         tripLive = tripLiveBlock(),
-                        extraFids = runCatching { autoserviceClient.readExtraFids() }
-                            .getOrDefault(emptyMap()),
+                        extraFids = extraFidsCached(nowMs),
                         diagnostics = diagnosticsBlock(),
                     ),
                 )
                 mysqlSyncRepository.pushCarState(snapshot)
-                    .onSuccess { mysqlCarStateLastPushMs = nowMs }
-                    .onFailure { Log.w(TAG, "MySQL car_state: ${it.message}") }
+                    .onSuccess {
+                        mysqlCarStateLastPushElapsedMs = elapsed
+                        mysqlCarStateLastFingerprint = fingerprint
+                    }
+                    .onFailure {
+                        mysqlCarStateRetryAtElapsedMs =
+                            SystemClock.elapsedRealtime() + MYSQL_CAR_STATE_RETRY_COOLDOWN_MS
+                        Log.w(TAG, "MySQL car_state: ${it.message}")
+                    }
             } catch (e: Exception) {
+                mysqlCarStateRetryAtElapsedMs =
+                    SystemClock.elapsedRealtime() + MYSQL_CAR_STATE_RETRY_COOLDOWN_MS
                 Log.w(TAG, "MySQL car_state: ${e.message}")
             } finally {
                 mysqlCarStateInFlight.set(false)
             }
         }
+    }
+
+    private suspend fun resolveSohCached(nowMs: Long): Double? {
+        mysqlSohCache?.let { if (nowMs - it.atMs < MYSQL_SOH_TTL_MS) return it.value }
+        val value = resolveSohPct(
+            liveBmsSohPercent = runCatching { autoserviceClient.readSohPercent() }.getOrNull(),
+            newestSnapshotSohPercent = mysqlSyncRepository.latestSohPct(),
+        )
+        mysqlSohCache = Cached(nowMs, value)
+        return value
+    }
+
+    private suspend fun extraFidsCached(nowMs: Long): Map<String, Double> {
+        mysqlExtraFidsCache?.let { if (nowMs - it.atMs < MYSQL_EXTRA_FIDS_TTL_MS) return it.value }
+        val value = runCatching { autoserviceClient.readExtraFids() }.getOrDefault(emptyMap())
+        mysqlExtraFidsCache = Cached(nowMs, value)
+        return value
+    }
+
+    private suspend fun chargeSessionBlockCached(
+        nowMs: Long,
+    ): com.bydmate.app.data.mysql.CarStateRawJson.ChargeSessionSnapshot? {
+        mysqlChargeBlockCache?.let {
+            if (nowMs - it.atMs < MYSQL_CHARGE_BLOCK_TTL_MS) return it.value
+        }
+        val value = chargeSessionBlock()
+        mysqlChargeBlockCache = Cached(nowMs, value)
+        return value
     }
 
     /**

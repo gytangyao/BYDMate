@@ -35,7 +35,7 @@ class MysqlSyncClient @Inject constructor() {
 
     /**
      * Permits == max concurrent hub sessions from this process. One, because the two callers (the
-     * ignition history sync and the 30 s live car_state push) can easily overlap — the sync runs
+     * ignition history sync and the change-driven live car_state push) can easily overlap — the sync runs
      * right at ignition, which is exactly when sampling starts — and letting them each open their
      * own socket would double the count for data that can wait its turn or simply be dropped.
      */

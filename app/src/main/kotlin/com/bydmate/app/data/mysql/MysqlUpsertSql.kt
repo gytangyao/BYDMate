@@ -237,8 +237,9 @@ internal object MysqlUpsertSql {
     /**
      * The rolling delete that keeps `car_state` to [retentionDays] of live samples.
      *
-     * This is the one append-only table that grows with time rather than with trips: a row every
-     * 30 s with the whole raw payload behind it. The phone reads the newest rows only, so an old
+     * This is the one append-only table that grows with time rather than with trips: a change-driven
+     * row (at most one per 2 s, one per 5 min when nothing moves) with the whole raw payload behind
+     * it. The phone reads the newest rows only, so an old
      * sample has no reader left. The cutoff is the server's clock for the same reason as
      * [logPrune]: a head unit that boots before its clock is corrected must not decide what to
      * delete. `(vehicle_id, pushed_at)` is the table's index, so the range delete stays cheap.

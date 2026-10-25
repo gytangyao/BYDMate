@@ -177,9 +177,9 @@ class MysqlSyncRepository @Inject constructor(
 
         /**
          * How far back live `car_state` samples are kept: three months, the longest the owner wants
-         * retained. This is the one table that grows at a fixed rate (a sample every 30 s, each
-         * carrying the full raw snapshot), so it is the one that needs a ceiling; trips, charges
-         * and battery snapshots grow with usage and stay.
+         * retained. This is the one table that grows at a fixed rate (change-driven samples, at most
+         * one per 2 s, each carrying the full raw snapshot), so it is the one that needs a ceiling;
+         * trips, charges and battery snapshots grow with usage and stay.
          */
         private const val CAR_STATE_RETENTION_DAYS = 90
 

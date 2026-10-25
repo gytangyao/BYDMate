@@ -11,7 +11,7 @@ import com.bydmate.app.data.charging.AutoserviceChargingDetector
  * driving behind it.
  *
  * The snapshot stays as the fallback because `soh` is one of the fids that returns a sentinel during
- * the BMS recalibration after a full charge, and a 30 s dashboard push should not blank the phone for
+ * the BMS recalibration after a full charge, and a dashboard push should not blank the phone for
  * those seconds.
  *
  * Both candidates go through the plausibility window the SOC→kWh conversion already uses: below
