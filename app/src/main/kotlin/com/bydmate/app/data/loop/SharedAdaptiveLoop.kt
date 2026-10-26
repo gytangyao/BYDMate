@@ -44,14 +44,14 @@ class SharedAdaptiveLoop constructor(
     private val elapsedNow: () -> Long = SystemClock::elapsedRealtime,
 ) {
     private val _flow = MutableSharedFlow<DiParsData>(
-        replay = 1, extraBufferCapacity = 0,
+        replay = 1, extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     val flow: SharedFlow<DiParsData> = _flow.asSharedFlow()
 
     /** [flow] with the measurement time of each snapshot. */
     private val _samples = MutableSharedFlow<TimedSnapshot>(
-        replay = 1, extraBufferCapacity = 0,
+        replay = 1, extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     val samples: SharedFlow<TimedSnapshot> = _samples.asSharedFlow()
@@ -61,24 +61,50 @@ class SharedAdaptiveLoop constructor(
 
     private var job: Job? = null
 
+    /**
+     * Set at the top of every iteration. A coroutine stuck inside a blocking Binder call still
+     * reports isActive, so [start] cannot trust that alone; a stale heartbeat is the real sign
+     * that the loop is wedged and must be replaced.
+     */
+    @Volatile private var lastTickElapsedMs = 0L
+    @Volatile private var generation = 0
+
     companion object {
         /** Max staleness of last_state.ts between writes; 5× inside TripRecorder's 5-min cold-start gap. */
         const val HEARTBEAT_MS = 60_000L
+
+        /** 3× the 60 s max poll backoff: no tick for longer means the loop is stuck, not idle. */
+        const val STALL_TIMEOUT_MS = 3 * 60_000L
         private const val TAG = "SharedAdaptiveLoop"
     }
 
     @Synchronized
     fun start(scope: CoroutineScope): Job {
-        job?.takeIf { it.isActive }?.let { return it }
-        job = scope.launch(dispatcher) { runLoop() }
+        val current = job
+        if (current != null && current.isActive && !isStalled()) return current
+        if (current != null && current.isActive) {
+            Log.w(TAG, "loop wedged: no tick for ${elapsedNow() - lastTickElapsedMs} ms — replacing it")
+        }
+        generation++
+        current?.cancel()
+        val gen = generation
+        lastTickElapsedMs = elapsedNow()
+        job = scope.launch(dispatcher) { runLoop(gen) }
         return job!!
     }
 
-    fun stop() { job?.cancel(); job = null }
+    fun stop() {
+        generation++
+        job?.cancel()
+        job = null
+    }
 
-    private suspend fun runLoop() {
+    private fun isStalled(): Boolean = elapsedNow() - lastTickElapsedMs > STALL_TIMEOUT_MS
+
+    private suspend fun runLoop(gen: Int) {
         var consecutiveNull = 0
-        while (true) {
+        while (generation == gen) {
+            lastTickElapsedMs = elapsedNow()
             // Taken before the read: the snapshot is never younger than this.
             val readStartedAt = elapsedNow()
             val data = runCatching { parsReader.fetch() }.getOrNull()
@@ -98,6 +124,7 @@ class SharedAdaptiveLoop constructor(
                 .onFailure { Log.w(TAG, "persistSnapshot failed, loop continues", it) }
             delay(cadence.intervalFor(LoopFsm.classify(data)))
         }
+        Log.i(TAG, "loop gen=$gen exit (generation=$generation)")
     }
 
     private suspend fun persistSnapshot(data: DiParsData) {

@@ -68,17 +68,21 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.bydmate.app.BuildConfig
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Named
@@ -148,6 +152,8 @@ class TrackingService : Service(), LocationListener {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var pollingJob: Job? = null
+    private var ticksJob: Job? = null
+    private var samplingWatchdogJob: Job? = null
     // Trigger 2 for the ADB restore: Android refuses to enable wireless debugging without a
     // Wi-Fi connection, so a Wi-Fi network appearing is the moment a blocked attempt can run.
     private var wifiRestoreCallback: ConnectivityManager.NetworkCallback? = null
@@ -353,6 +359,12 @@ class TrackingService : Service(), LocationListener {
         private const val MYSQL_EXTRA_FIDS_TTL_MS = 60_000L
         /** The charge probe plus live charging fids behind the raw block. */
         private const val MYSQL_CHARGE_BLOCK_TTL_MS = 30_000L
+        /** How often the watchdog checks that snapshots still reach the tick consumers. */
+        private const val POLL_WATCHDOG_INTERVAL_MS = 60_000L
+        /** Longer than any cadence (idle 30 s) or null-read backoff (60 s): a real wedge. */
+        private const val POLL_STALL_RESTART_MS = 10 * 60_000L
+        /** A cold-start DB/prefs step that takes longer is stuck; the pipeline must still start. */
+        private const val COLD_START_STEP_TIMEOUT_MS = 30_000L
         private const val MB = 1024L * 1024L
         // Throttle autoservice gun-state read so we don't hit Binder/ADB on every
         // poll tick. 5 ticks ≈ 15 s — fast enough that the user sees a row
@@ -1705,6 +1717,12 @@ class TrackingService : Service(), LocationListener {
         com.bydmate.app.ui.widget.WidgetController.detach("service_destroy")
         ChainLog.append(this, "TrackingService onDestroy")
         pollingJob?.cancel()
+        ticksJob?.cancel()
+        samplingWatchdogJob?.cancel()
+        // The loop is a process-wide singleton: serviceScope.cancel() cannot interrupt a
+        // coroutine wedged in a Binder transact, so stop() bumps its generation and the next
+        // service start launches a fresh loop instead of trusting the stale job.
+        sharedAdaptiveLoop.stop()
         hudController.stop()
         ConsumptionAggregator.reset()
         // NOTE: do NOT null out _sessionStartedAt or clear SessionPersistence here.
@@ -1823,26 +1841,73 @@ class TrackingService : Service(), LocationListener {
         Log.i(TAG, "Starting polling via SharedAdaptiveLoop")
         pollingJob = serviceScope.launch {
             // The cold-start reconciliation decides by the car type whether the open trip gets
-            // litres; onServiceStart loads the cached type concurrently.
-            runCatching { vehicleKindMonitor.awaitCache() }
-                .onFailure { Log.w(TAG, "vehicle kind cache load failed", it) }
+            // litres; onServiceStart loads the cached type concurrently. Each step is capped:
+            // a stuck DataStore/Room call must not keep the sampler from ever starting.
+            runCatching {
+                withTimeoutOrNull(COLD_START_STEP_TIMEOUT_MS) { vehicleKindMonitor.awaitCache() }
+                    ?: Log.w(TAG, "vehicle kind cache load timed out")
+            }.onFailure { Log.w(TAG, "vehicle kind cache load failed", it) }
             // DM-i: the last ON tick of the previous process becomes the cold_start counter row
             // before the first tick of this one can rewrite it. HistoryImporter.runSync() makes
             // the same call; the ±90 s check keeps it to one row.
-            runCatching { counterSnapshotWriter.onColdStart(lastStateDao.getCurrent(), vehicleKindMonitor.kind.value) }
-                .onFailure { Log.w(TAG, "CounterSnapshotWriter.onColdStart failed", it) }
+            runCatching {
+                withTimeoutOrNull(COLD_START_STEP_TIMEOUT_MS) {
+                    counterSnapshotWriter.onColdStart(lastStateDao.getCurrent(), vehicleKindMonitor.kind.value)
+                } ?: Log.w(TAG, "CounterSnapshotWriter.onColdStart timed out")
+            }.onFailure { Log.w(TAG, "CounterSnapshotWriter.onColdStart failed", it) }
             // Cold-start reconciliation BEFORE subscribing — so we never receive
             // a tick into a stale open trip from a previous session.
-            runCatching { tripRecorder.reconcileColdStart() }
-                .onFailure { Log.w(TAG, "Cold-start reconciliation failed", it) }
+            runCatching {
+                withTimeoutOrNull(COLD_START_STEP_TIMEOUT_MS) { tripRecorder.reconcileColdStart() }
+                    ?: Log.w(TAG, "Cold-start reconciliation timed out")
+            }.onFailure { Log.w(TAG, "Cold-start reconciliation failed", it) }
 
-            sharedAdaptiveLoop.start(serviceScope)
+            startTickPipeline()
+            startSamplingWatchdog()
+        }
+    }
+
+    /**
+     * Subscribes the tick consumers and starts the sampler. Kept apart from the cold-start
+     * steps so the watchdog can rebuild it without replaying trip reconciliation.
+     */
+    @Synchronized
+    private fun startTickPipeline() {
+        ticksJob?.cancel()
+        ticksJob = serviceScope.launch {
+            // Automation actions and the foreground notification are the tick consumers that
+            // can block outside this process (Binder, system UI). Each runs on its own
+            // conflated queue: a wedged action then costs automation, not sampling, trip
+            // recording or the hub push — the failure that went unnoticed for four days.
+            val automationQueue = Channel<TickWork>(Channel.CONFLATED)
+            val notificationQueue = Channel<DiParsData>(Channel.CONFLATED)
+            launch {
+                for (work in automationQueue) {
+                    try {
+                        automationEngine.evaluateMutex.withLock {
+                            automationEngine.evaluate(work.data, work.sessionId)
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Automation evaluate threw on tick: ${e.message}", e)
+                    }
+                }
+            }
+            launch {
+                for (data in notificationQueue) {
+                    runCatching { updateNotification(data) }
+                        .onFailure { Log.w(TAG, "updateNotification failed: ${it.message}") }
+                }
+            }
 
             launch {
                 sharedAdaptiveLoop.connected.collect { connected ->
                     _vehicleDataConnected.value = connected
                 }
             }
+
+            sharedAdaptiveLoop.start(serviceScope)
 
             sharedAdaptiveLoop.samples.collect { sample ->
                 val data = sample.data
@@ -2051,8 +2116,8 @@ class TrackingService : Service(), LocationListener {
 
                     // Idle drain tracked via energydata zero-km records only (HistoryImporter).
                     // Live power integration removed — motor power ≠ total battery drain.
-                    automationEngine.evaluateMutex.withLock { automationEngine.evaluate(data, sessionId) }
-                    updateNotification(data)
+                    automationQueue.trySend(TickWork(data, sessionId))
+                    notificationQueue.trySend(data)
                     maybeLogSessionSummary(nowMs, data, sessionId)
                     maybeSendIternioTelemetry(data, nowMs)
                     maybePushMysqlCarState(data, nowMs)
@@ -2066,6 +2131,31 @@ class TrackingService : Service(), LocationListener {
                 } catch (e: Exception) {
                     Log.e(TAG, "Downstream consumer threw on tick: ${e.message}", e)
                 }
+            }
+        }
+    }
+
+    private data class TickWork(val data: DiParsData, val sessionId: Long?)
+
+    /**
+     * Rebuilds the tick pipeline when snapshots stop reaching its consumers. The sampler can be
+     * wedged in an uninterruptible Binder call and a consumer can be stuck on a singleton lock;
+     * neither shows up as a dead job, so liveness is measured by the last consumed snapshot.
+     */
+    private fun startSamplingWatchdog() {
+        if (samplingWatchdogJob?.isActive == true) return
+        samplingWatchdogJob = serviceScope.launch {
+            while (isActive) {
+                delay(POLL_WATCHDOG_INTERVAL_MS)
+                val last = lastDataAtMs
+                if (last == 0L) continue
+                val age = System.currentTimeMillis() - last
+                if (age < POLL_STALL_RESTART_MS) continue
+                Log.w(TAG, "Poll pipeline stalled for ${age / 1000}s — restarting sampling")
+                ticksJob?.cancel()
+                sharedAdaptiveLoop.stop()
+                delay(200)
+                startTickPipeline()
             }
         }
     }

@@ -12,8 +12,11 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -59,5 +62,26 @@ class SharedAdaptiveLoopLifecycleTest {
         val j2 = loop.start(scope)
         assertEquals(j1, j2)
         j1.cancel()
+    }
+
+    @Test fun `loop with a stale heartbeat is replaced on the next start`() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val reader = mockk<ParsReader>()
+        // fetch() never returns: the wedged-Binder shape that left a dead loop looking active.
+        coEvery { reader.fetch() } coAnswers { kotlinx.coroutines.awaitCancellation() }
+        val lastState = mockk<LastStateDao>(relaxed = true)
+        val energy = mockk<EnergyDataReader>(relaxed = true)
+        var clock = 0L
+        val loop = SharedAdaptiveLoop(reader, lastState, energy, dispatcher, elapsedNow = { clock })
+        val scope = TestScope(dispatcher)
+
+        val j1 = loop.start(scope)
+        runCurrent()
+        clock = SharedAdaptiveLoop.STALL_TIMEOUT_MS + 1
+
+        val j2 = loop.start(scope)
+        assertNotEquals(j1, j2)
+        assertTrue(j1.isCancelled)
+        j2.cancel()
     }
 }
