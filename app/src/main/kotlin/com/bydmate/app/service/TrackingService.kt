@@ -72,6 +72,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
@@ -346,9 +347,11 @@ class TrackingService : Service(), LocationListener {
         /**
          * Floor between two live `car_state` rows. The sampling loop runs at 1 Hz while driving and
          * most of its fields change every tick, so without a floor "push on change" would mean
-         * "push every second"; 2 s keeps the dashboard effectively live while halving the writes.
+         * "push every second". 5 s still reads as live on the dashboard while cutting the morning
+         * drive's rows to ~2/5 of the old 2 s figure (field measurement 2026-10-26: 1379 rows /
+         * 6.6 MB in one morning) — the raw snapshot is the biggest table and keeps 90 days.
          */
-        private const val MYSQL_CAR_STATE_MIN_GAP_MS = 2_000L
+        private const val MYSQL_CAR_STATE_MIN_GAP_MS = 5_000L
         /** After a failed write, wait this long before trying again, changed state or not. */
         private const val MYSQL_CAR_STATE_RETRY_COOLDOWN_MS = 30_000L
         /** How often the lifetime-charging inputs behind that row are re-read from Room. */
@@ -968,6 +971,19 @@ class TrackingService : Service(), LocationListener {
                 mysqlSyncScheduler.enqueueIfDue(this@TrackingService)
             } catch (e: Exception) {
                 Log.w(TAG, "MySQL sync check failed: ${e.message}")
+            }
+        }
+        // Trip end: ship the finished drive (trip, points, counter snapshot) without waiting for
+        // the next ignition — otherwise an evening drive only reaches the phone the next morning.
+        // NonCancellable: the ignition-off tick is often the last thing this service does, and the
+        // enqueue must survive the onDestroy that follows it.
+        tripRecorder.onTripClosed = {
+            serviceScope.launch(NonCancellable) {
+                try {
+                    mysqlSyncScheduler.enqueueTripEnd(this@TrackingService)
+                } catch (e: Exception) {
+                    Log.w(TAG, "MySQL trip-end sync failed: ${e.message}")
+                }
             }
         }
 
@@ -1760,6 +1776,7 @@ class TrackingService : Service(), LocationListener {
         // singleton). Cancelling here left confirm-action callbacks dead until
         // process death.
         HelperBinderHolder.installOnAccepted(null)
+        tripRecorder.onTripClosed = null
         serviceScope.cancel()
 
         // Remove GPS listener to prevent leak
