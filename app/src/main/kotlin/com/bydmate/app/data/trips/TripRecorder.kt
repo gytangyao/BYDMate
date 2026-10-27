@@ -40,6 +40,13 @@ class TripRecorder @Inject @Suppress("LongParameterList") constructor( // inject
     )
     internal var open: Open? = null
 
+    /**
+     * Called right after a live trip is written (not for cold-start reconciliation, which runs at
+     * ignition where the regular sync is already due). TrackingService uses it to ship the trip
+     * while the drive is still fresh; tests use it as the signal that the row landed.
+     */
+    var onTripClosed: (() -> Unit)? = null
+
     private val hybridEdge = HybridIgnitionEdge()
     /** DM-i: the trip's end edge, one ON tick with its time, counters and odometer. */
     private val endEdge = ReadableOnTick()
@@ -233,6 +240,10 @@ class TripRecorder @Inject @Suppress("LongParameterList") constructor( // inject
         this.open = null
         endEdge.clear()
         lastStateDao.clearOpenTrip()
+        // After the row and the open-trip state are consistent: a listener that reads the DB must
+        // see the finished trip, and a throwing listener must not leave the recorder half-closed.
+        runCatching { onTripClosed?.invoke() }
+            .onFailure { Log.w(TAG, "onTripClosed failed: ${it.message}") }
     }
 
     /** Call once before subscribing to the loop. */

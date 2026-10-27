@@ -29,7 +29,17 @@ class MysqlSyncScheduler @Inject constructor(
         private const val TAG = "MysqlSync"
         private const val MIN_INTERVAL_MS = 5L * 60 * 1000 // don't re-hit the hub on every quick restart
         private const val START_DELAY_SEC = 20L // let the head unit finish booting its own network
+        /**
+         * A trip-end sync ships within seconds of the ignition-off tick; the short delay lets the
+         * counter snapshot for that same tick land in Room first (it is written right after the
+         * trip row) without keeping the head unit awake any longer.
+         */
+        private const val TRIP_END_DELAY_SEC = 10L
+        /** A stop-and-go errand closes several trips; one hub session per couple of minutes is enough. */
+        private const val TRIP_END_COOLDOWN_MS = 2L * 60 * 1000
     }
+
+    @Volatile private var lastTripEndEnqueueMs = 0L
 
     suspend fun enqueueIfDue(context: Context) {
         if (settingsRepository.getString(SettingsRepository.KEY_MYSQL_ENABLED, "true") == "false") return
@@ -40,6 +50,23 @@ class MysqlSyncScheduler @Inject constructor(
             return
         }
         enqueue(context, tag = "ignition")
+    }
+
+    /**
+     * A trip just closed. The ignition-off tick writes the trip, its points and the counter
+     * snapshot, then this ships them — the phone shows the drive minutes after it ends instead of
+     * waiting for the next ignition, which may be the next morning. Bypasses [MIN_INTERVAL_MS]
+     * (that interval exists to avoid quick restarts, not to delay a finished drive) but keeps its
+     * own short cooldown.
+     */
+    suspend fun enqueueTripEnd(context: Context) {
+        if (settingsRepository.getString(SettingsRepository.KEY_MYSQL_ENABLED, "true") == "false") return
+        val now = System.currentTimeMillis()
+        synchronized(this) {
+            if (now - lastTripEndEnqueueMs < TRIP_END_COOLDOWN_MS) return
+            lastTripEndEnqueueMs = now
+        }
+        enqueue(context, tag = "trip_end")
     }
 
     /** Immediate, user-requested sync (Settings «Sync now»); ignores the interval but not the config. */
@@ -54,8 +81,13 @@ class MysqlSyncScheduler @Inject constructor(
             Log.i(TAG, "enqueue($tag) skipped: no host")
             return
         }
+        val delaySec = when (tag) {
+            "manual" -> 0L
+            "trip_end" -> TRIP_END_DELAY_SEC
+            else -> START_DELAY_SEC
+        }
         val request = OneTimeWorkRequestBuilder<MysqlSyncWorker>()
-            .setInitialDelay(if (tag == "manual") 0L else START_DELAY_SEC, TimeUnit.SECONDS)
+            .setInitialDelay(delaySec, TimeUnit.SECONDS)
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .build()

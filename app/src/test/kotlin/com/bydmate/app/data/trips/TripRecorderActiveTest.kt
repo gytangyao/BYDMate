@@ -59,6 +59,29 @@ class TripRecorderActiveTest {
         coVerify(exactly = 1) { lastState.clearOpenTrip() }
     }
 
+    @Test fun `a live trip close notifies the listener exactly once`() = runTest {
+        val (rec, _, _) = setup()
+        var closed = 0
+        rec.onTripClosed = { closed++ }
+        rec.consume(diParsData(powerState = 2, soc = 80, mileage = 100.0))  // open
+        rec.consume(diParsData(powerState = 2, soc = 75, mileage = 110.0))  // driving
+        rec.consume(diParsData(powerState = 1, soc = 70, mileage = 110.0))  // close -> notify
+        rec.consume(diParsData(powerState = 1, soc = 70, mileage = 110.0))  // no open trip
+
+        assertEquals(1, closed)
+    }
+
+    @Test fun `a throwing trip-close listener does not break the close`() = runTest {
+        val (rec, tripDao, lastState) = setup()
+        rec.onTripClosed = { error("hub down") }
+        rec.consume(diParsData(powerState = 2, soc = 80, mileage = 100.0))
+        rec.consume(diParsData(powerState = 1, soc = 70, mileage = 110.0))
+
+        coVerify(exactly = 1) { tripDao.insert(any()) }
+        coVerify(exactly = 1) { lastState.clearOpenTrip() }
+        assertNull(rec.open)
+    }
+
     @Test fun `an implausible odometer delta drops the distance instead of inserting it`() = runTest {
         // The odometer scale changed under an open trip (catalog resolved mid-session on
         // Song Plus): 8647.2 km at open, 86472.0 at close would be a 77 825 km trip.
