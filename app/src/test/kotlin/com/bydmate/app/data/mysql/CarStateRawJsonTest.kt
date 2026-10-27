@@ -118,6 +118,30 @@ class CarStateRawJsonTest {
         assertFalse(json.has("vehicle_kind"))
     }
 
+    @Test
+    fun `a zero remaining-energy placeholder with a non-empty pack is not shipped`() {
+        val json = JSONObject(
+            CarStateRawJson.build(
+                data = fullSample().copy(soc = 73, batteryRemainKwh = 0.0),
+                pushedAt = 3L,
+                sohPct = null,
+                vehicleKind = null,
+            ),
+        )
+        // Every one of 1820 samples read 0.00 kWh at SOC > 0: the BMS has no such reading.
+        assertFalse(json.has("battery_remain_kwh"))
+
+        val empty = JSONObject(
+            CarStateRawJson.build(
+                data = fullSample().copy(soc = 0, batteryRemainKwh = 0.0),
+                pushedAt = 4L,
+                sohPct = null,
+                vehicleKind = null,
+            ),
+        )
+        assertEquals(0.0, empty.getDouble("battery_remain_kwh"), 1e-9)
+    }
+
     /**
      * A running charge has no ChargeEntity yet, so these are the only rows the phone can show
      * until the gun comes out. Both halves ride in one block: the live fids and the probe.

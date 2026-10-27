@@ -134,7 +134,10 @@ internal object CarStateRawJson {
         num("cell_v_max", data.maxCellVoltage)
         num("cell_v_min", data.minCellVoltage)
         num("exterior_temp_c", data.exteriorTemp)
-        num("battery_remain_kwh", data.batteryRemainKwh)
+        // This car's BMS answers 0 for remaining energy while the pack is clearly not empty
+        // (SOC 73% → 0.00 kWh in every one of 1820 samples). The tech panel already treats that
+        // as "no reading"; don't let the placeholder reach `raw` as if it were a measurement.
+        num("battery_remain_kwh", data.batteryRemainKwh?.takeUnless { it <= 0.0 && (data.soc ?: 0) > 0 })
         num("bms_state", data.bmsState)
         num("insulation_kohm", data.insulationKohm)
         num("hv_voltage_v", data.hvVoltage)
