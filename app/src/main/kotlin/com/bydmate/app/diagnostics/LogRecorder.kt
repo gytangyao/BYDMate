@@ -429,6 +429,13 @@ class LogRecorder internal constructor(
             return arrayOf("logcat", "-v", "time", "-T", since) + LOGCAT_ARGS.copyOfRange(3, LOGCAT_ARGS.size)
         }
 
+        /**
+         * The `Tag:*` filters behind [LOGCAT_ARGS], without the recording's `-T` replay. The hub's
+         * log shipper reuses them so both channels agree on which tags are worth keeping — one list,
+         * not two that drift apart.
+         */
+        internal fun filterSpecs(): List<String> = LOGCAT_ARGS.asList().drop(4)
+
         private val LOGCAT_ARGS = arrayOf(
             "logcat", "-v", "time",
             "-s", "BootReceiver:*",

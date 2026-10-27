@@ -45,12 +45,19 @@ class LogShippingTest {
     @Test
     fun `the dump asks for a wide tail and offers a pid-filtered fallback`() {
         val variants = CarLogCollector.logcatArgVariants(pid)
-        assertEquals(3, variants.size)
+        assertEquals(4, variants.size)
         // An 800-line system tail covers ~half a minute on this head unit: it can hold zero app
         // lines, which is exactly how app_logs went blind in 2026-10-20..25.
-        assertTrue(variants.map { it.second.last().toInt() }.all { it >= 4000 })
+        assertTrue(
+            variants.filter { it.first != "tags" }.map { it.second.last().toInt() }.all { it >= 4000 }
+        )
         // uid stays first: it survives a process restart, so a crashed run's lines still ship.
         assertTrue(variants.first().second.toList().contains("uid"))
+        // logd selects our tags itself, so sparse app lines survive a ring full of system chatter.
+        val tagsArgs = variants.single { it.first == "tags" }.second.toList()
+        assertTrue(tagsArgs.contains("-s"))
+        assertTrue(tagsArgs.contains("TrackingService:*"))
+        assertTrue("the collector's own warnings must ship too", tagsArgs.contains("MysqlLogs:*"))
         val pidArgs = variants.single { it.second.any { a -> a == "--pid=$pid" } }.second
         assertFalse("logd already filtered by pid, a uid column cannot be parsed", pidArgs.toList().contains("uid"))
         // Vendors that reject both modifiers still get a plain dump.

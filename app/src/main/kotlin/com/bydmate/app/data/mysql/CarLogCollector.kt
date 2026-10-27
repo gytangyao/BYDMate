@@ -3,6 +3,7 @@ package com.bydmate.app.data.mysql
 import android.util.Log
 import com.bydmate.app.data.charging.CatchUpJournal
 import com.bydmate.app.data.repository.SettingsRepository
+import com.bydmate.app.diagnostics.LogRecorder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.UUID
@@ -62,6 +63,7 @@ class CarLogCollector @Inject constructor(
     private var runStartTs = 0L
 
     @Volatile private var lastMarkerMs = 0L
+    @Volatile private var lastEmptyWarnMs = 0L
 
     /** Verdicts the hub has this ring for, and the set this flush offered: only a confirmed write moves the former. */
     @Volatile private var journalSentVerdicts: List<String>? = null
@@ -173,7 +175,10 @@ class CarLogCollector @Inject constructor(
                 val out = process.inputStream.bufferedReader().use { it.readText() }
                 val err = process.errorStream.bufferedReader().use { it.readText() }
                 if (!process.waitFor(LOGCAT_TIMEOUT_MS, TimeUnit.MILLISECONDS)) process.destroyForcibly()
-                if (out.isBlank()) Log.w(TAG, "logcat `$name` empty: ${err.take(200)}")
+                // A rejected modifier is a property of this firmware, not news: DEBUG keeps it out
+                // of the WARN-level hub rows that made `MysqlLogs: logcat 'pid' empty` 121 warnings
+                // in 17 h — all of them describing a fallback that then worked.
+                if (out.isBlank()) Log.d(TAG, "logcat `$name` empty: ${err.take(200)}")
                 out.lineSequence().map { it.trimEnd() }.toList()
             }.getOrDefault(emptyList())
             val parsed = LogcatLogFormat.collapse(lines, myUid, myPid, MysqlUpsertSql.MAX_LOG_MSG_CHARS)
@@ -183,8 +188,20 @@ class CarLogCollector @Inject constructor(
             // both are recorded.
             tried += "$name=${lines.size}"
         }
-        Log.w(TAG, "logcat: no own lines in any variant, dumped: ${tried.joinToString(", ")}")
+        warnEmptyThrottled(tried)
         return emptyList()
+    }
+
+    /** One warning per cooldown: an empty dump repeats every flush and is not a new fact each time. */
+    private fun warnEmptyThrottled(tried: List<String>) {
+        val now = System.currentTimeMillis()
+        val msg = "logcat: no own lines in any variant, dumped: ${tried.joinToString(", ")}"
+        if (now - lastEmptyWarnMs < EMPTY_WARN_COOLDOWN_MS) {
+            Log.d(TAG, msg)
+        } else {
+            lastEmptyWarnMs = now
+            Log.w(TAG, msg)
+        }
     }
 
     /**
@@ -277,18 +294,25 @@ class CarLogCollector @Inject constructor(
         internal const val JOURNAL_TAG = "AutoserviceDetector"
         private const val JOURNAL_PREFIX = "catch-up verdicts: "
         private const val JOURNAL_SEPARATOR = " | "
+        private const val EMPTY_WARN_COOLDOWN_MS = 10 * 60 * 1000L
 
         /**
-         * Bounded dumps tried in order until one contains a line of this process. `-t 4000` rather
-         * than 800: this car writes ~30 system lines a second, so an 800-line tail covers under
-         * half a minute and routinely held no BYDMate line at all — the remote `app_logs` only ever
-         * saw the collector's own warning. The uid variant goes first because the uid survives a
-         * process restart, so the previous run's lines (the ones that explain a crash) are still
-         * ours; `--pid` makes logd do the filtering; the plain dump is the last resort for builds
-         * that reject the modifiers.
+         * Bounded dumps tried in order until one contains a line of this process.
+         *
+         * The tag filter comes second: logd selects our ~100 known tags itself, so a ring 4000
+         * lines deep in system chatter still yields the app's own sparse lines (the plain tail
+         * often held none — the remote `app_logs` only ever saw the collector's own warning).
+         * The uid variant stays first because the uid survives a process restart, so the
+         * previous run's lines (the ones that explain a crash) are still ours; `--pid` makes
+         * logd filter by process; the plain dump is the last resort for builds that reject
+         * the modifiers.
          */
         internal fun logcatArgVariants(pid: Int): List<Pair<String, Array<String>>> = listOf(
             "uid" to arrayOf("logcat", "-d", "-v", "uid", "-v", "threadtime", "-v", "year", "-t", "4000"),
+            "tags" to (
+                arrayOf("logcat", "-d", "-v", "threadtime", "-t", "4000", "-s") +
+                    LogRecorder.filterSpecs() + "MysqlLogs:*"
+                ),
             "pid" to arrayOf("logcat", "-d", "--pid=$pid", "-v", "threadtime", "-t", "4000"),
             "plain" to arrayOf("logcat", "-d", "-v", "threadtime", "-t", "4000"),
         )

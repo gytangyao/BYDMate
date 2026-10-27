@@ -74,7 +74,9 @@ class AutoserviceClientImpl @Inject constructor(
         if (!adb.isConnected()) {
             val r = adb.connect()
             if (r.isFailure) {
-                Log.w(TAG, "isAvailable: connect failed: ${r.exceptionOrNull()?.message}")
+                if (logThrottle.shouldLog("isAvailable:connect")) {
+                    Log.w(TAG, "isAvailable: connect failed: ${r.exceptionOrNull()?.message}")
+                }
                 return false
             }
         }
@@ -85,7 +87,9 @@ class AutoserviceClientImpl @Inject constructor(
         getInt("soh")?.let { return true }
         getFloat("totalElecConsumption")?.let { return true }
         getFloat("soc")?.let { return true }
-        Log.w(TAG, "isAvailable: all 3 probe fids returned sentinel")
+        if (logThrottle.shouldLog("isAvailable:sentinel")) {
+            Log.w(TAG, "isAvailable: all 3 probe fids returned sentinel")
+        }
         return false
     }
 
