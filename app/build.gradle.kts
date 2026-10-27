@@ -42,8 +42,8 @@ android {
         targetSdk = 29
         // Both must move with anything that ships: an APK whose version matches the previous one
         // cannot be told apart on the head unit after an install, and the hub logs carry no build id.
-        versionCode = 516
-        versionName = "4.0.9"
+        versionCode = 518
+        versionName = "4.0.11"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
