@@ -164,6 +164,8 @@ class AutoserviceChargingDetectorTest {
         prevCapacityKwh: Float? = null,
         prevMileageKm: Float? = null,
         prevTs: Long? = null,
+        chargePending: Boolean = false,
+        probe: ChargingStateStore.SessionProbe? = null,
         autoserviceAvailable: Boolean = true,
         homeTariff: Double = 0.20,
         dcTariff: Double = 0.73,
@@ -193,6 +195,19 @@ class AutoserviceChargingDetectorTest {
             }
             if (prevTs != null) {
                 put(SettingsRepository.KEY_LAST_STATE_TS, prevTs.toString())
+            }
+            if (chargePending) {
+                put(SettingsRepository.KEY_CHARGE_PENDING, "true")
+            }
+            if (probe != null) {
+                put(
+                    SettingsRepository.KEY_CHARGING_SESSION_PROBE,
+                    listOf(
+                        probe.startTs, probe.lastTickTs, probe.lastSoc, probe.lastRiseTs,
+                        probe.peakKw ?: "", probe.tempMinC ?: "", probe.tempMaxC ?: "",
+                        probe.tempSumC ?: "", probe.tempCount
+                    ).joinToString("|")
+                )
             }
         }
         val settingsDao = FakeSettingsDao(initialMap)
@@ -995,11 +1010,10 @@ class AutoserviceChargingDetectorTest {
     }
 
     @Test
-    fun `3 percent rise with odometer moved still creates a row`() = runTest {
-        // SOC_DELTA_TRUSTED_CHARGE: regen-while-parked and BMS recalibration
-        // never reach 3%, so a >=3% rise is a charge no matter what the
-        // odometer says — the anchor's mileage can be stale (it used to freeze
-        // while SOC was flat, field report 2026-06-11).
+    fun `3 percent rise with odometer moved and no evidence is drift`() = runTest {
+        // A driven gap that left no charge evidence (no gun-in tick, no probe)
+        // and a rise below SOC_DELTA_UNATTRIBUTED_CHARGE is resting LFP drift,
+        // not a charge — the 2026-10-26 phantom was exactly this shape at 7%.
         val fourHoursMs = 4L * 3_600_000L
         val setup = build(
             battery = battery(soc = 80f, mileage = 2200f),
@@ -1011,10 +1025,61 @@ class AutoserviceChargingDetectorTest {
 
         val result = setup.detector.runCatchUp(now = 100L + fourHoursMs)
 
+        assertEquals(CatchUpOutcome.NO_DELTA, result.outcome)
+        assertEquals(0, setup.chargeDao.inserted.size)
+        assertEquals(80, setup.stateStore.load().socPercent)
+    }
+
+    @Test
+    fun `phantom charge 2026-10-26 - 7 percent drift over a 99 km gap creates no row`() = runTest {
+        // Field report: app dead 10-22 19:55 → 10-26 19:41, 99.4 km driven in
+        // the gap, SOC 40 → 47 heard at wake with no gun ever seen. The old
+        // >=3% trusted tier wrote a 0.7056 kWh zero-duration phantom row.
+        val fourDaysMs = 96L * 3_600_000L
+        val setup = build(
+            battery = battery(soc = 47f, mileage = 25479.5f),
+            charging = charging(capKwh = null, gunState = 1),
+            prevSoc = 40,
+            prevMileageKm = 25380.1f,
+            prevTs = 100L
+        )
+
+        val result = setup.detector.runCatchUp(now = 100L + fourDaysMs)
+
+        assertEquals(CatchUpOutcome.NO_DELTA, result.outcome)
+        assertEquals(0, setup.chargeDao.inserted.size)
+        assertEquals(0, setup.snapshotDao.inserted.size)
+        assertEquals(47, setup.stateStore.load().socPercent)
+    }
+
+    @Test
+    fun `small rise over a driven gap with probe evidence creates a row`() = runTest {
+        // Gun-in ticks recorded a session; the drive afterwards consumed some
+        // SOC, so the net rise is small. Evidence must carry the row through
+        // the driven-gap veto and the probe must bound the session window.
+        val sessionStart = 8_000_000L
+        val lastTick = 8_100_000L
+        val fourHoursMs = 4L * 3_600_000L
+        val setup = build(
+            battery = battery(soc = 80f, mileage = 2200f),
+            charging = charging(capKwh = null, gunState = 1),
+            prevSoc = 75,
+            prevMileageKm = 2091f,
+            prevTs = 100L,
+            probe = ChargingStateStore.SessionProbe(
+                startTs = sessionStart,
+                lastTickTs = lastTick,
+                lastSoc = 80,
+                lastRiseTs = lastTick,
+            )
+        )
+
+        val result = setup.detector.runCatchUp(now = 100L + fourHoursMs)
+
         assertEquals(CatchUpOutcome.SESSION_CREATED, result.outcome)
         val ch = setup.chargeDao.inserted.single()
-        assertEquals(77, ch.socStart)
-        assertEquals(80, ch.socEnd)
+        assertEquals(sessionStart, ch.startTs)
+        assertEquals(lastTick, ch.endTs)
     }
 
     @Test
