@@ -56,7 +56,8 @@ object VoiceModule {
 
     @Provides @Singleton
     fun provideContinuousAsr(mm: GigaAmModelManager, guard: AsrLoadGuard): ContinuousAsr =
-        GigaAmAsrEngine(mm, loadGuard = guard, warmVad = LegacyHeadUnit.isAndroid10)
+        GigaAmAsrEngine(mm, loadGuard = guard, warmVad = LegacyHeadUnit.isAndroid10,
+            preRollMs = if (LegacyHeadUnit.isAndroid10) 400 else 0)
 
     @Provides @Singleton
     fun provideRuStressMarker(mm: TtsModelManager): RuStressMarker =
@@ -134,10 +135,15 @@ object VoiceModule {
     }
 
     @Provides @Singleton
-    fun provideAudioCapture(@ApplicationContext ctx: Context) =
+    fun provideAutoVoiceDuck(@ApplicationContext ctx: Context, helper: com.bydmate.app.data.vehicle.HelperClient) =
+        AutoVoiceDuck(helper::setAutoVoiceActive, ctx.getSharedPreferences("voice", Context.MODE_PRIVATE))
+
+    @Provides @Singleton
+    fun provideAudioCapture(@ApplicationContext ctx: Context, autoVoiceDuck: AutoVoiceDuck) =
         AudioCapture(
             ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager,
             ctx.getSharedPreferences("voice", Context.MODE_PRIVATE),
+            autoVoiceDuck,
         )
 
     @Provides @Singleton

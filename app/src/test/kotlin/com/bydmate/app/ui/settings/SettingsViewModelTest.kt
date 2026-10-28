@@ -144,6 +144,7 @@ class SettingsViewModelTest {
         override suspend fun getLiveTrips(): List<TripEntity> = emptyList()
         override suspend fun getByStartTsRange(minTs: Long, maxTs: Long): TripEntity? = null
         override suspend fun getAllSnapshot(): List<TripEntity> = emptyList()
+        override suspend fun unlinkBydId(id: Long, bydId: Long): Int = 0
         override suspend fun getWithEnergyInRange(from: Long, to: Long): List<TripEntity> = emptyList()
         override suspend fun deleteById(id: Long) {}
         override suspend fun deleteZeroKmTrips(): Int = 0
@@ -1658,6 +1659,32 @@ class SettingsViewModelTest {
         assertEquals(
             "offline",
             ctx.getSharedPreferences("voice", Context.MODE_PRIVATE).getString("tts_source", null)
+        )
+    }
+
+    @Test
+    fun `resetTripSourceDetection also clears the energydata import watermark (#348)`() = runTest {
+        val ctx: Context = ApplicationProvider.getApplicationContext()
+        val vm = buildViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+        // A watermark poisoned by a future-dated energydata row, and a source fingerprint that
+        // would make the next sync skip the unchanged file.
+        settingsDao.map[SettingsRepository.KEY_LAST_ENERGYDATA_IMPORT_TS] = "4102444800" // 2100-01-01
+        ctx.getSharedPreferences("energydata_sync", Context.MODE_PRIVATE).edit()
+            .putLong("lastModified", 1L).putLong("fileSize", 2L).putString("filePath", "/x").commit()
+
+        vm.resetTripSourceDetection()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        verify(exactly = 1) { energyDataDeadDetector.reset() }
+        assertEquals(
+            "reset must clear the import watermark",
+            0L,
+            SettingsRepository(settingsDao, mockk(relaxed = true)).getLastEnergyImportTs(),
+        )
+        assertFalse(
+            "reset must also forget the source fingerprint so the next sync re-reads the file",
+            ctx.getSharedPreferences("energydata_sync", Context.MODE_PRIVATE).contains("lastModified"),
         )
     }
 

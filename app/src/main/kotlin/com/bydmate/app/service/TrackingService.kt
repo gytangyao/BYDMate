@@ -133,11 +133,13 @@ class TrackingService : Service(), LocationListener {
     @Inject lateinit var ttsModelManager: com.bydmate.app.voice.TtsModelManager
     @Inject lateinit var ttsEngine: com.bydmate.app.voice.TtsEngine
     @Inject lateinit var audioCapture: com.bydmate.app.voice.AudioCapture
+    @Inject lateinit var autoVoiceDuck: com.bydmate.app.voice.AutoVoiceDuck
     @Inject lateinit var hudController: com.bydmate.app.hud.HudController
     @Inject lateinit var fidPushChannel: com.bydmate.app.data.push.FidPushChannel
     @Inject lateinit var blindSpotController: com.bydmate.app.camera.BlindSpotController
     @Inject lateinit var clusterMusicBridge: com.bydmate.app.media.ClusterMusicBridge
     @Inject lateinit var logRecorder: com.bydmate.app.diagnostics.LogRecorder
+    @Inject lateinit var splitPreferences: com.bydmate.app.split.SplitPreferences
     @Inject lateinit var logTelegramSender: com.bydmate.app.diagnostics.LogTelegramSender
     @Inject lateinit var autoBackupScheduler: com.bydmate.app.data.backup.AutoBackupScheduler
     @Inject lateinit var mysqlSyncScheduler: com.bydmate.app.data.mysql.MysqlSyncScheduler
@@ -678,6 +680,8 @@ class TrackingService : Service(), LocationListener {
             // A binder that just arrived carries no subscription yet: the daemon clears its
             // listener table when it dies, and a fresh one starts empty.
             serviceScope.launch { fidPushChannel.resubscribe("binder accepted") { fidCatalogManager.catalog } }
+            // An off call of the firmware voice duck that found no daemon lands now (#353).
+            runCatching { autoVoiceDuck.recoverStuck() }
             // Tell the daemon we hold its binder so it stops re-announcing it (#64/#148).
             // Must not block the receiver thread — registerClient is a binder transact.
             serviceScope.launch { helperClient.registerClient() }
@@ -781,6 +785,10 @@ class TrackingService : Service(), LocationListener {
                 }
                 adbVerdictMonitor.recompute()
                 ChainLog.append(this@TrackingService, "Helper daemon: ${if (ok) "alive" else "unreachable"}")
+                // Companion of restoreStuckDuck() above (#353): turn the firmware voice duck off
+                // if a process died with it on. Needs the daemon, hence here; without an answer
+                // the duck retries, and so does every later daemon arrival.
+                runCatching { autoVoiceDuck.recoverStuck() }
                 // Not gated on ok: a cached catalog resolves over the ADB read path without the
                 // daemon, and without one the call just returns and the respawn path retries.
                 resolveFidCatalog()
@@ -2397,22 +2405,11 @@ class TrackingService : Service(), LocationListener {
         // track — while parked the GPS provider goes quiet (8 m filter) and only
         // network kept firing far-away points that got recorded into the route.
         // Same params as TripInfo (2000ms, 8m, explicit MainLooper).
-        if (gpsEnabled) {
-            try {
-                lm.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER,
-                    2000L, 8.0f,
-                    this, Looper.getMainLooper()
-                )
-                Log.i(TAG, "requestLocationUpdates(GPS_PROVIDER) registered")
-            } catch (e: Exception) {
-                Log.e(TAG, "GPS provider registration failed: ${e.message}", e)
-            }
-        }
+        registerGpsUpdates(lm, this, Looper.getMainLooper())
 
         // Immediate fix from GPS last-known only (like TripInfo).
         try {
-            val lastKnown = if (gpsEnabled) lm.getLastKnownLocation(LocationManager.GPS_PROVIDER) else null
+            val lastKnown = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
             // A seed is never live; with no fresh seed (GPS off, no fix yet), any snapshot kept
             // from a previous run of this service is demoted too, so a restart never keeps
             // serving a stale point as if the listener just delivered it.
@@ -2429,7 +2426,7 @@ class TrackingService : Service(), LocationListener {
         }
 
         if (!gpsEnabled) {
-            Log.e(TAG, "GPS provider not enabled! GPS tracking will not work.")
+            Log.e(TAG, "GPS provider not enabled! Listener registered, waiting for the provider.")
         }
     }
 
@@ -2567,6 +2564,8 @@ class TrackingService : Service(), LocationListener {
     }
 
     private suspend fun starServiceNeeded(prefs: android.content.SharedPreferences): Boolean {
+        // The split key is caught by the same a11y filter; without this a split-key-only car loses it on boot.
+        if (splitPreferences.isSteeringKeyActive()) return true
         val mirrorEnabled = prefs.getBoolean(ClusterProjectionManager.KEY_MIRROR_ENABLED, false)
         // Voice PTT depends on the same a11y service (SteeringWheelKeyService reads "voice" prefs
         // itself); without this, enabling Voice alone never re-binds the service (Finding 3).
@@ -2686,6 +2685,26 @@ class TrackingService : Service(), LocationListener {
         lastNotificationText = text
         val nm = getSystemService(NotificationManager::class.java)
         nm.notify(NOTIFICATION_ID, buildNotification(text))
+    }
+}
+
+/** GPS listener registration, whatever the provider state at this instant (#361): DiLink 3.0/4.0
+ *  switch the provider off with the ignition, and a service created during an ignition-off wake
+ *  lives on into the next drive. Android keeps a request made for a disabled provider and starts
+ *  delivering once it comes back on. A unit with no GPS provider at all throws; that is logged. */
+@Suppress("TooGenericExceptionCaught") // a vendor LocationManager must not take the service down
+internal fun registerGpsUpdates(lm: LocationManager, listener: LocationListener, looper: Looper) {
+    try {
+        lm.requestLocationUpdates(
+            LocationManager.GPS_PROVIDER,
+            2000L, 8.0f,
+            listener, looper
+        )
+        Log.i("TrackingService", "requestLocationUpdates(GPS_PROVIDER) registered")
+    } catch (e: SecurityException) {
+        Log.e("TrackingService", "GPS permission denied: ${e.message}", e)
+    } catch (e: Exception) {
+        Log.e("TrackingService", "GPS provider registration failed: ${e.message}", e)
     }
 }
 

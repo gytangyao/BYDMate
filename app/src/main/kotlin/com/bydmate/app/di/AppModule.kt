@@ -407,17 +407,27 @@ object AppModule {
         }
     }
 
+    /** Start time on trip tombstones (#348): energydata ids are recycled when the car recreates its DB. */
+    internal val MIGRATION_23_24 = object : Migration(23, 24) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE trip_tombstones ADD COLUMN start_ts INTEGER")
+        }
+    }
+
     /**
-     * 24: the charge-curve buffer. Charging is sampled before the session row exists (that row
+     * 25: the charge-curve buffer. Charging is sampled before the session row exists (that row
      * is written at the unplug), so the ticks land in `charge_samples` and are copied into
      * `charge_points` once the row has an id; only `charge_points` is shipped to the hub.
      *
-     * Also removes the zero-duration drift row the pre-4.0.11 charging gate wrote on
-     * 2026-10-26 19:42 (SOC 40→47 with no charger, 0.7056 kWh): a completed charge cannot
-     * have equal start and end, and the row has been re-pushed to the hub ever since the
-     * first attempt to delete it there. Its battery snapshot goes first — it has no FK.
+     * Also removes the zero-duration drift row written on 2026-10-26 19:42 (SOC 40→47 with no
+     * charger, 0.7056 kWh): a completed charge cannot have equal start and end. Its battery
+     * snapshot goes first — it has no FK.
+     *
+     * The tombstone column is re-checked here because the fork's 4.0.12 build used schema 24
+     * for `charge_samples` before upstream's 23→24 existed; head units that took it must still
+     * end up with `start_ts`.
      */
-    internal val MIGRATION_23_24 = object : Migration(23, 24) {
+    internal val MIGRATION_24_25 = object : Migration(24, 25) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("""
                 CREATE TABLE IF NOT EXISTS `charge_samples` (
@@ -429,12 +439,23 @@ object AppModule {
                 )
             """.trimIndent())
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_charge_samples_ts` ON `charge_samples` (`ts`)")
+            if (!db.hasColumn("trip_tombstones", "start_ts")) {
+                db.execSQL("ALTER TABLE trip_tombstones ADD COLUMN start_ts INTEGER")
+            }
             db.execSQL(
                 "DELETE FROM battery_snapshots WHERE charge_id IN " +
                     "(SELECT id FROM charges WHERE start_ts = 1793014925090 AND end_ts = 1793014925090)"
             )
             db.execSQL("DELETE FROM charges WHERE start_ts = 1793014925090 AND end_ts = 1793014925090")
         }
+    }
+
+    private fun SupportSQLiteDatabase.hasColumn(table: String, column: String): Boolean {
+        query("PRAGMA table_info(`$table`)").use { cursor ->
+            val name = cursor.getColumnIndexOrThrow("name")
+            while (cursor.moveToNext()) if (cursor.getString(name) == column) return true
+        }
+        return false
     }
 
     @Provides
@@ -452,7 +473,7 @@ object AppModule {
 
     /** Every production migration: the app database and a restored archive of an older schema share them. */
     fun withMigrations(builder: RoomDatabase.Builder<AppDatabase>): RoomDatabase.Builder<AppDatabase> =
-        builder.addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24)
+        builder.addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25)
 
     @Provides fun provideTripDao(db: AppDatabase): TripDao = db.tripDao()
     @Provides fun provideTripPointDao(db: AppDatabase): TripPointDao = db.tripPointDao()

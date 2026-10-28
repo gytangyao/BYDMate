@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 24,
-    "identityHash": "7fc5688847a1a322922654f74a8f3343",
+    "identityHash": "9de62a654873dd6466d4327a4c5b5e7a",
     "entities": [
       {
         "tableName": "trips",
@@ -547,60 +547,6 @@
             ]
           }
         ]
-      },
-      {
-        "tableName": "charge_samples",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `ts` INTEGER NOT NULL, `power_kw` REAL, `soc` INTEGER, `bat_temp` INTEGER)",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "ts",
-            "columnName": "ts",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "powerKw",
-            "columnName": "power_kw",
-            "affinity": "REAL",
-            "notNull": false
-          },
-          {
-            "fieldPath": "soc",
-            "columnName": "soc",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "batTemp",
-            "columnName": "bat_temp",
-            "affinity": "INTEGER",
-            "notNull": false
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "id"
-          ]
-        },
-        "indices": [
-          {
-            "name": "index_charge_samples_ts",
-            "unique": false,
-            "columnNames": [
-              "ts"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_charge_samples_ts` ON `${TABLE_NAME}` (`ts`)"
-          }
-        ],
-        "foreignKeys": []
       },
       {
         "tableName": "settings",
@@ -1267,13 +1213,19 @@
       },
       {
         "tableName": "trip_tombstones",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`byd_id` INTEGER NOT NULL, PRIMARY KEY(`byd_id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`byd_id` INTEGER NOT NULL, `start_ts` INTEGER, PRIMARY KEY(`byd_id`))",
         "fields": [
           {
             "fieldPath": "bydId",
             "columnName": "byd_id",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "startTs",
+            "columnName": "start_ts",
+            "affinity": "INTEGER",
+            "notNull": false
           }
         ],
         "primaryKey": {
@@ -1427,7 +1379,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7fc5688847a1a322922654f74a8f3343')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9de62a654873dd6466d4327a4c5b5e7a')"
     ]
   }
 }
