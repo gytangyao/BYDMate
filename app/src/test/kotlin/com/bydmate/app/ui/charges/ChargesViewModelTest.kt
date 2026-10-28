@@ -6,6 +6,7 @@ import com.bydmate.app.data.local.LocalePreferences
 import com.bydmate.app.data.local.dao.BatterySnapshotDao
 import com.bydmate.app.data.local.dao.ChargeDao
 import com.bydmate.app.data.local.dao.ChargePointDao
+import com.bydmate.app.data.local.dao.NoopChargeSampleDao
 import com.bydmate.app.data.local.dao.ChargeSummary
 import com.bydmate.app.data.local.dao.SettingsDao
 import com.bydmate.app.data.local.entity.BatterySnapshotEntity
@@ -212,7 +213,7 @@ class ChargesViewModelTest {
         val settingsRepo = SettingsRepository(settingsDao, mockk<LocalePreferences>(relaxed = true))
 
         val chargeDao = FakeChargeDao(chargesFlow, autoserviceCharges, legacyExists)
-        val chargeRepo = ChargeRepository(chargeDao, StubChargePointDao())
+        val chargeRepo = ChargeRepository(chargeDao, StubChargePointDao(), NoopChargeSampleDao)
 
         val snapshotDao = FakeBatterySnapshotDao(snapshots)
         val autoservice = FakeAutoserviceClient(batteryReading, autoserviceAvailable)

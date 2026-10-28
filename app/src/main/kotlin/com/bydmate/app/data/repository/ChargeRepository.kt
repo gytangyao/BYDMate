@@ -2,9 +2,11 @@ package com.bydmate.app.data.repository
 
 import com.bydmate.app.data.local.dao.ChargeDao
 import com.bydmate.app.data.local.dao.ChargePointDao
+import com.bydmate.app.data.local.dao.ChargeSampleDao
 import com.bydmate.app.data.local.dao.ChargeSummary
 import com.bydmate.app.data.local.entity.ChargeEntity
 import com.bydmate.app.data.local.entity.ChargePointEntity
+import com.bydmate.app.data.local.entity.ChargeSampleEntity
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -55,7 +57,8 @@ fun fullCycleKwh(bmsLifetimeKwh: Double?, chargedKwh: Double?): Double? =
 @Singleton
 class ChargeRepository @Inject constructor(
     private val chargeDao: ChargeDao,
-    private val chargePointDao: ChargePointDao
+    private val chargePointDao: ChargePointDao,
+    private val chargeSampleDao: ChargeSampleDao
 ) {
     suspend fun insertCharge(charge: ChargeEntity): Long = chargeDao.insert(charge)
 
@@ -75,6 +78,39 @@ class ChargeRepository @Inject constructor(
 
     suspend fun insertChargePoints(points: List<ChargePointEntity>) =
         chargePointDao.insertAll(points)
+
+    /** One charging tick, buffered until the session row exists (it is written at the unplug). */
+    suspend fun recordChargeSample(sample: ChargeSampleEntity) {
+        chargeSampleDao.insert(sample)
+        // A session that never closes (gun pulled and never reconstructed) must not grow forever.
+        chargeSampleDao.deleteOlderThan(sample.ts - SAMPLE_RETENTION_MS)
+    }
+
+    /**
+     * Copies the buffered samples of a finished session into `charge_points` and clears them —
+     * that table is what the hub ships and the phone draws as the curve. The window is the row's
+     * own start/end (plus a minute of slack), not "everything pending": a sample outside it
+     * belongs to some other session or to a charge the gate legitimately dropped.
+     */
+    suspend fun attachSamplesToCharge(chargeId: Long, fromTs: Long, toTs: Long): Int {
+        val samples = chargeSampleDao.getRange(fromTs, toTs)
+        if (samples.isNotEmpty()) {
+            chargePointDao.insertAll(
+                samples.map {
+                    ChargePointEntity(
+                        chargeId = chargeId,
+                        timestamp = it.ts,
+                        powerKw = it.powerKw,
+                        soc = it.soc,
+                        batTemp = it.batTemp,
+                    )
+                }
+            )
+            chargeSampleDao.deleteRange(fromTs, toTs)
+        }
+        chargeSampleDao.deleteOlderThan(toTs - SAMPLE_RETENTION_MS)
+        return samples.size
+    }
 
     suspend fun getChargePoints(chargeId: Long): List<ChargePointEntity> =
         chargePointDao.getByChargeId(chargeId)
@@ -108,3 +144,6 @@ class ChargeRepository @Inject constructor(
 
     suspend fun deleteCharge(charge: ChargeEntity) = chargeDao.delete(charge)
 }
+
+/** How long an unclaimed sample may wait for its session row before it is thrown away. */
+private const val SAMPLE_RETENTION_MS = 72L * 3_600_000

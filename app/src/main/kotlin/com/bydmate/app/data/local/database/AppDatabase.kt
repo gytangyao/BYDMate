@@ -5,6 +5,7 @@ import androidx.room.RoomDatabase
 import com.bydmate.app.data.local.dao.BatterySnapshotDao
 import com.bydmate.app.data.local.dao.ChargeDao
 import com.bydmate.app.data.local.dao.ChargePointDao
+import com.bydmate.app.data.local.dao.ChargeSampleDao
 import com.bydmate.app.data.local.dao.CounterSnapshotDao
 import com.bydmate.app.data.local.dao.IdleDrainDao
 import com.bydmate.app.data.local.dao.OdometerSampleDao
@@ -22,6 +23,7 @@ import com.bydmate.app.data.local.entity.BatterySnapshotEntity
 import com.bydmate.app.data.local.entity.LastStateEntity
 import com.bydmate.app.data.local.entity.ChargeEntity
 import com.bydmate.app.data.local.entity.ChargePointEntity
+import com.bydmate.app.data.local.entity.ChargeSampleEntity
 import com.bydmate.app.data.local.entity.CounterSnapshotEntity
 import com.bydmate.app.data.local.entity.IdleDrainEntity
 import com.bydmate.app.data.local.entity.OdometerSampleEntity
@@ -41,6 +43,7 @@ import com.bydmate.app.data.local.entity.VehicleWriteLogEntity
         TripPointEntity::class,
         ChargeEntity::class,
         ChargePointEntity::class,
+        ChargeSampleEntity::class,
         SettingEntity::class,
         IdleDrainEntity::class,
         BatterySnapshotEntity::class,
@@ -54,20 +57,21 @@ import com.bydmate.app.data.local.entity.VehicleWriteLogEntity
         TariffPeriodEntity::class,
         CounterSnapshotEntity::class
     ],
-    version = 23,
+    version = 24,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         /** Current Room schema version. Must match the @Database(version = ...) annotation above. */
-        const val SCHEMA_VERSION = 23
+        const val SCHEMA_VERSION = 24
     }
 
     abstract fun tripDao(): TripDao
     abstract fun tripPointDao(): TripPointDao
     abstract fun chargeDao(): ChargeDao
     abstract fun chargePointDao(): ChargePointDao
+    abstract fun chargeSampleDao(): ChargeSampleDao
     abstract fun settingsDao(): SettingsDao
     abstract fun idleDrainDao(): IdleDrainDao
     abstract fun batterySnapshotDao(): BatterySnapshotDao

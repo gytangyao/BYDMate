@@ -18,6 +18,7 @@ import com.bydmate.app.data.local.HistoryImporter
 import com.bydmate.app.data.local.dao.BatterySnapshotDao
 import com.bydmate.app.data.local.dao.ChargeDao
 import com.bydmate.app.data.local.dao.ChargePointDao
+import com.bydmate.app.data.local.dao.NoopChargeSampleDao
 import com.bydmate.app.data.local.dao.ChargeSummary
 import com.bydmate.app.data.local.dao.IdleDrainDao
 import com.bydmate.app.data.local.dao.SettingsDao
@@ -307,7 +308,7 @@ class SettingsViewModelTest {
         val chargeDao = object : StubChargeDao() {
             override fun getAll(): Flow<List<ChargeEntity>> = flowOf(emptyList())
         }
-        val chargeRepo = ChargeRepository(chargeDao, StubChargePointDao())
+        val chargeRepo = ChargeRepository(chargeDao, StubChargePointDao(), NoopChargeSampleDao)
         val idleDrainDao = StubIdleDrainDao()
 
         val httpClient = OkHttpClient()

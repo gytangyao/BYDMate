@@ -3,6 +3,7 @@ package com.bydmate.app.data.charging
 import com.bydmate.app.data.autoservice.AutoserviceClient
 import com.bydmate.app.data.local.entity.BatterySnapshotEntity
 import com.bydmate.app.data.local.entity.ChargeEntity
+import com.bydmate.app.data.local.entity.ChargeSampleEntity
 import com.bydmate.app.data.nativestack.ParsReader
 import com.bydmate.app.data.remote.DiParsData
 import com.bydmate.app.data.repository.BatteryHealthRepository
@@ -16,6 +17,7 @@ import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 enum class DetectorState { IDLE, EVALUATING, ERROR }
 
@@ -131,6 +133,10 @@ class AutoserviceChargingDetector @Inject constructor(
         private const val CHARGER_CONNECT_PLUGGED = 1
         // chargeConnectIndicator (fid 710934572, dev 1007): 1 = plug in, 2 = plug out.
         private const val CHARGE_INDICATOR_PLUGGED = 1
+        /** Minimum spacing between curve samples; the catch-up tick is coarser anyway. */
+        private const val SAMPLE_MIN_GAP_MS = 60_000L
+        /** Slack around a session's own bounds when its buffered samples are claimed. */
+        private const val SAMPLE_WINDOW_SLACK_MS = 60_000L
 
         /**
          * Is the charge plug physically in?
@@ -239,6 +245,16 @@ class AutoserviceChargingDetector @Inject constructor(
         val sample = runCatching { parsReader.fetch() }.getOrNull() ?: lastSample
         val kw = sample?.power?.takeIf { it.isFinite() }?.let { abs(it) }
         val temp = sample?.avgBatTemp?.toDouble()?.takeIf { it.isFinite() }
+        // The curve the phone draws for a finished session: one buffered row per tick. The
+        // session row (and its id) only exists at the unplug, so these wait in charge_samples.
+        // Spacing keeps a head unit that wakes mid-charge from over-sampling the same hour.
+        if (prev == null || now - prev.lastTickTs >= SAMPLE_MIN_GAP_MS) {
+            runCatching {
+                chargeRepo.recordChargeSample(
+                    ChargeSampleEntity(ts = now, powerKw = kw, soc = soc, batTemp = temp?.roundToInt())
+                )
+            }.onFailure { android.util.Log.w(TAG, "recordChargingTick: sample write failed: ${it.message}") }
+        }
         val next = if (continuous) {
             prev!!.copy(
                 lastTickTs = now,
@@ -559,6 +575,20 @@ class AutoserviceChargingDetector @Inject constructor(
             // Step 10: insert charge
             val chargeId = chargeRepo.insertCharge(charge)
 
+            // The tick samples recorded while the gun was in now have a session to belong to.
+            // Without this the hub's charge_points stays empty and the phone's detail page has
+            // no curve to draw.
+            val pointCount = runCatching {
+                chargeRepo.attachSamplesToCharge(
+                    chargeId = chargeId,
+                    fromTs = sessionStart - SAMPLE_WINDOW_SLACK_MS,
+                    toTs = sessionEnd + SAMPLE_WINDOW_SLACK_MS,
+                )
+            }.getOrElse {
+                android.util.Log.w(TAG, "runCatchUp: attaching charge samples failed: ${it.message}")
+                0
+            }
+
             // Step 11: BatterySnapshot when SOC delta is meaningful
             // SoH = BMS-reported (autoservice FID_SOH), NOT our derived value.
             // cellDeltaV/batTempAvg = best-effort from the latest native sample; nulls if unavailable.
@@ -599,11 +629,11 @@ class AutoserviceChargingDetector @Inject constructor(
             val kmPrev = prev.mileageKm?.let { "%.1f".format(it) } ?: "?"
             val plugInfo = "${charging?.chargerConnectState ?: "?"}/" +
                 "${charging?.chargeConnectIndicator ?: "?"}/${charging?.gunConnectState ?: "?"}"
-            android.util.Log.i(TAG, "runCatchUp: SESSION_CREATED id=$chargeId, delta=${"%.3f".format(delta)}, source=$detectionSource, type=$type, socStart=$socStart, socEnd=$socEnd, km=$kmNow prev_km=$kmPrev plug=$plugInfo")
+            android.util.Log.i(TAG, "runCatchUp: SESSION_CREATED id=$chargeId, delta=${"%.3f".format(delta)}, source=$detectionSource, type=$type, socStart=$socStart, socEnd=$socEnd, points=$pointCount, km=$kmNow prev_km=$kmPrev plug=$plugInfo")
             logJournal(
                 now,
                 "SESSION_CREATED kwh=${"%.2f".format(delta)} src=$detectionSource " +
-                    "type=$type soc=$socStart->$socEnd km=$kmNow prev_km=$kmPrev plug=$plugInfo " +
+                    "type=$type soc=$socStart->$socEnd points=$pointCount km=$kmNow prev_km=$kmPrev plug=$plugInfo " +
                     "win=${"%.1f".format(sessionHours)}h peak=${probe?.peakKw?.let { "%.1f".format(it) } ?: "?"}"
             )
             _state.value = DetectorState.IDLE

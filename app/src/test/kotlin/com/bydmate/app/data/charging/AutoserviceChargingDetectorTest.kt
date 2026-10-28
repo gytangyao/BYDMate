@@ -4,9 +4,11 @@ import com.bydmate.app.data.autoservice.AutoserviceClient
 import com.bydmate.app.data.autoservice.BatteryReading
 import com.bydmate.app.data.autoservice.ChargingReading
 import com.bydmate.app.data.local.dao.ChargeDao
+import com.bydmate.app.data.local.dao.ChargeSampleDao
 import com.bydmate.app.data.local.dao.ChargeSummary
 import com.bydmate.app.data.local.entity.ChargeEntity
 import com.bydmate.app.data.local.entity.ChargePointEntity
+import com.bydmate.app.data.local.entity.ChargeSampleEntity
 import com.bydmate.app.data.nativestack.ParsReader
 import com.bydmate.app.data.remote.DiParsData
 import com.bydmate.app.data.repository.BatteryHealthRepository
@@ -92,12 +94,34 @@ class AutoserviceChargingDetectorTest {
             inserted.filter { it.startTs >= since && it.status == "COMPLETED" }
     }
 
-    private object NullChargePointDao : com.bydmate.app.data.local.dao.ChargePointDao {
-        override suspend fun insertAll(points: List<ChargePointEntity>) {}
-        override suspend fun getByChargeId(chargeId: Long): List<ChargePointEntity> = emptyList()
-        override suspend fun getForSync(chargeId: Long, pointId: Long, limit: Int): List<ChargePointEntity> = emptyList()
-        override suspend fun getCount(): Int = 0
+    private class RecordingPointDao : com.bydmate.app.data.local.dao.ChargePointDao {
+        val points = mutableListOf<ChargePointEntity>()
+        override suspend fun insertAll(points: List<ChargePointEntity>) {
+            this.points += points
+        }
+        override suspend fun getByChargeId(chargeId: Long): List<ChargePointEntity> =
+            points.filter { it.chargeId == chargeId }
+        override suspend fun getForSync(chargeId: Long, pointId: Long, limit: Int): List<ChargePointEntity> =
+            points
+        override suspend fun getCount(): Int = points.size
         override suspend fun thinOldPoints(cutoff: Long, intervalMs: Long): Int = 0
+    }
+
+    private class RecordingSampleDao : ChargeSampleDao {
+        val rows = mutableListOf<ChargeSampleEntity>()
+        override suspend fun insert(sample: ChargeSampleEntity) {
+            rows += sample
+        }
+        override suspend fun getRange(from: Long, to: Long): List<ChargeSampleEntity> =
+            rows.filter { it.ts in from..to }.sortedBy { it.ts }
+        override suspend fun deleteRange(from: Long, to: Long) {
+            rows.removeAll { it.ts in from..to }
+        }
+        override suspend fun deleteOlderThan(cutoff: Long): Int {
+            val before = rows.size
+            rows.removeAll { it.ts < cutoff }
+            return before - rows.size
+        }
     }
 
     private class FakeSettingsDao(initial: Map<String, String> = emptyMap()) :
@@ -145,7 +169,9 @@ class AutoserviceChargingDetectorTest {
         val stateStore: ChargingStateStore,
         val auto: FakeAutoservice,
         val journal: CatchUpJournal,
-        val pars: FakeParsReader
+        val pars: FakeParsReader,
+        val pointDao: RecordingPointDao,
+        val sampleDao: RecordingSampleDao
     )
 
     /**
@@ -174,7 +200,9 @@ class AutoserviceChargingDetectorTest {
     ): TestSetup {
         val auto = FakeAutoservice(battery, charging, autoserviceAvailable)
         val dao = RecordingDao()
-        val chargeRepo = ChargeRepository(dao, NullChargePointDao)
+        val pointDao = RecordingPointDao()
+        val sampleDao = RecordingSampleDao()
+        val chargeRepo = ChargeRepository(dao, pointDao, sampleDao)
         val snapshotDao = RecordingBatterySnapshotDao()
         val healthRepo = BatteryHealthRepository(snapshotDao)
 
@@ -227,7 +255,10 @@ class AutoserviceChargingDetectorTest {
             parsReader = pars,
             journal = journal
         )
-        return TestSetup(detector, dao, snapshotDao, stateStore, auto, journal, pars)
+        return TestSetup(
+            detector, dao, snapshotDao, stateStore, auto, journal, pars,
+            pointDao = pointDao, sampleDao = sampleDao
+        )
     }
 
     /** DiParsData carrying only the fields recordParkedAnchor reads (gun defaults to NONE=1). */
@@ -1666,5 +1697,66 @@ class AutoserviceChargingDetectorTest {
         assertEquals(base, row.endTs)
         assertNull("an unobserved session must not claim a power it never measured", row.avgPowerKw)
         assertNull(row.maxPowerKw)
+    }
+
+    // === charge curve samples ===
+
+    @Test
+    fun `gun-in tick buffers a curve sample while no session row exists`() = runTest {
+        val now = 1_700_000_000_000L
+        val setup = build(
+            battery = battery(soc = 70f),
+            charging = charging(capKwh = 25.0f, gunState = 2),
+            prevSoc = 30,
+            prevCapacityKwh = 0.0f,
+            diParsData = tickSample(soc = 70, power = -3.4, temp = 27),
+        )
+
+        val result = setup.detector.runCatchUp(now = now)
+
+        assertEquals(CatchUpOutcome.STILL_CHARGING, result.outcome)
+        val sample = setup.sampleDao.rows.single()
+        assertEquals(now, sample.ts)
+        assertEquals(3.4, sample.powerKw!!, 1e-6)
+        assertEquals(70, sample.soc)
+        assertEquals(27, sample.batTemp)
+        // No row exists yet → nothing may be published as a finished curve.
+        assertTrue(setup.pointDao.points.isEmpty())
+    }
+
+    @Test
+    fun `session creation claims the samples inside its window as charge points`() = runTest {
+        val sessionStart = 8_000_000L
+        val lastTick = 8_100_000L
+        val setup = build(
+            battery = battery(soc = 80f, mileage = 2200f),
+            charging = charging(capKwh = null, gunState = 1),
+            prevSoc = 75,
+            prevMileageKm = 2091f,
+            prevTs = 7_900_000L,
+            probe = ChargingStateStore.SessionProbe(
+                startTs = sessionStart,
+                lastTickTs = lastTick,
+                lastSoc = 80,
+                lastRiseTs = lastTick,
+            ),
+        )
+        setup.sampleDao.rows += ChargeSampleEntity(
+            ts = sessionStart + 50_000L, powerKw = 3.4, soc = 78, batTemp = 27
+        )
+        // Too old to belong to this session — must survive the attach untouched.
+        setup.sampleDao.rows += ChargeSampleEntity(ts = 7_000_000L, powerKw = 1.0, soc = 60)
+
+        val result = setup.detector.runCatchUp(now = 9_000_000L)
+
+        assertEquals(CatchUpOutcome.SESSION_CREATED, result.outcome)
+        val chargeId = requireNotNull(result.chargeId)
+        val point = setup.pointDao.points.single()
+        assertEquals(chargeId, point.chargeId)
+        assertEquals(sessionStart + 50_000L, point.timestamp)
+        assertEquals(3.4, point.powerKw!!, 1e-6)
+        assertEquals(78, point.soc)
+        assertEquals(27, point.batTemp)
+        assertEquals(7_000_000L, setup.sampleDao.rows.single().ts)
     }
 }

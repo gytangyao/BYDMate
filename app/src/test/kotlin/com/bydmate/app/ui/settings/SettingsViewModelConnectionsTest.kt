@@ -13,6 +13,7 @@ import com.bydmate.app.data.local.HistoryImporter
 import com.bydmate.app.data.local.LocalePreferences
 import com.bydmate.app.data.local.dao.ChargeDao
 import com.bydmate.app.data.local.dao.ChargePointDao
+import com.bydmate.app.data.local.dao.NoopChargeSampleDao
 import com.bydmate.app.data.local.dao.ChargeSummary
 import com.bydmate.app.data.local.dao.IdleDrainDao
 import com.bydmate.app.data.local.dao.SettingsDao
@@ -228,7 +229,7 @@ class SettingsViewModelConnectionsTest {
         val tripRepo = TripRepository(tripDao, tripPointDao, mockk<TripTombstoneDao>(relaxed = true), mockk<AppDatabase>(relaxed = true))
 
         val chargeDao = StubChargeDao()
-        val chargeRepo = ChargeRepository(chargeDao, StubChargePointDao())
+        val chargeRepo = ChargeRepository(chargeDao, StubChargePointDao(), NoopChargeSampleDao)
         val idleDrainDao = StubIdleDrainDao()
 
         val httpClient = OkHttpClient()
