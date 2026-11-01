@@ -1,0 +1,320 @@
+import java.io.FileInputStream
+import java.util.Properties
+
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("com.google.devtools.ksp")
+    id("com.google.dagger.hilt.android")
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("org.gradle.test-retry")
+    id("org.jetbrains.kotlinx.kover")
+    id("io.gitlab.arturbosch.detekt")
+}
+
+// Release signing is loaded from keystore.properties (gitignored, never in VCS).
+// When the file is absent (CI, fresh clone), the release build is left unsigned.
+val keystorePropsFile = rootProject.file("keystore.properties")
+val keystoreProps = Properties().apply {
+    if (keystorePropsFile.exists()) load(FileInputStream(keystorePropsFile))
+}
+
+// The MySQL hub's connection defaults are compiled in so a fresh install works without typing
+// anything. They are read from the machine's own gradle.properties, never from a file inside this
+// folder (the folder syncs to the NAS, and this is a credential). A build machine that has none of
+// them produces an app whose Settings page is simply blank — same as before this existed.
+fun hubDefault(key: String, fallback: String): String =
+    (findProperty("bydmate.hub$key") as String?)?.takeIf { it.isNotBlank() } ?: fallback
+
+// A Java string literal, escaped: the password is a machine-generated blob that may hold quotes.
+fun lit(value: String): String = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+android {
+    namespace = "com.bydmate.app"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "com.bydmate.app"
+        minSdk = 29
+        // targetSdk 29 matches TripInfo — grants full legacy file access
+        // on DiLink Android 12 (requestLegacyExternalStorage works).
+        // targetSdk 30+ would break listFiles() on /storage/emulated/0/energydata/
+        targetSdk = 29
+        // Both must move with anything that ships: an APK whose version matches the previous one
+        // cannot be told apart on the head unit after an install, and the hub logs carry no build id.
+        versionCode = 519
+        versionName = "4.0.12"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "HUB_HOST", lit(hubDefault("Host", "")))
+        buildConfigField("String", "HUB_PORT", lit(hubDefault("Port", "3306")))
+        buildConfigField("String", "HUB_USER", lit(hubDefault("User", "")))
+        buildConfigField("String", "HUB_PASSWORD", lit(hubDefault("Password", "")))
+        buildConfigField("String", "HUB_DATABASE", lit(hubDefault("Database", "bydmate")))
+        buildConfigField("String", "HUB_VEHICLE_ID", lit(hubDefault("VehicleId", "byd-1")))
+
+        ndk { abiFilters += listOf("arm64-v8a") }  // DiLink is arm64-only; single ABI keeps sherpa-onnx native libs small
+    }
+
+    signingConfigs {
+        if (keystorePropsFile.exists()) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.findByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
+    applicationVariants.all {
+        val variant = this
+        variant.outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            output.outputFileName = "BYDMate-v${variant.versionName}-${variant.versionCode}.apk"
+        }
+    }
+
+    lint {
+        // Not targeting Google Play -- DiLink sideload only
+        disable += "ExpiredTargetSdkVersion"
+        // Pre-existing issues frozen at CI introduction; new issues still fail.
+        baseline = file("lint-baseline.xml")
+    }
+
+    sourceSets {
+        // MigrationTestHelper (Robolectric) resolves schemas via merged variant
+        // assets — not the "test" sourceSet. Both debug and release need them
+        // so testDebugUnitTest AND testReleaseUnitTest can find Migration*Test
+        // schemas. ~50KB extra in release APK is acceptable (sideload only).
+        getByName("debug") {
+            assets.srcDirs("$projectDir/schemas")
+        }
+        getByName("release") {
+            assets.srcDirs("$projectDir/schemas")
+        }
+    }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            // android.util.Log is unavailable in pure JVM unit tests without Robolectric.
+            // returnDefaultValues = true makes all unmocked Android API methods return 0/null/false
+            // instead of throwing RuntimeException — this keeps AutoserviceChargingDetector
+            // testable without requiring Robolectric for every test class.
+            isReturnDefaultValues = true
+            all { test ->
+                // The default 512m test-worker heap OOMs near the end of the 3.5k-test
+                // Robolectric suite on RAM-constrained CI runners (TtsModelManagerTest OOM,
+                // CI runs 2026-08-19/24); dev machines pass on GC luck. One worker → 2g is safe.
+                test.maxHeapSize = "2g"
+                // CI only: retry individual failed tests to absorb the known inter-test
+                // pollution flake (UncaughtExceptionsBeforeTest hitting random classes).
+                // Local runs stay strict; a real failure still fails all 3 attempts.
+                test.extensions.configure(org.gradle.testretry.TestRetryTaskExtension::class.java) {
+                    if (System.getenv("CI") == "true") {
+                        maxRetries.set(2)
+                        maxFailures.set(10)
+                    }
+                }
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+        // MySQL Connector/J reaches for a few java.* APIs through surfaces DiLink's stripped
+        // runtime trims; desugaring backfills them so the driver loads on the head unit.
+        isCoreLibraryDesugaringEnabled = true
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+
+    packaging {
+        resources {
+            // The BouncyCastle jars (and their transitive jspecify) each ship their own copy
+            // of these entries; the packager refuses to merge duplicates and none of them are
+            // of any use inside the APK. Everything under META-INF/versions is JPMS/OSGi
+            // metadata that Android ignores outright.
+            excludes += setOf(
+                "META-INF/LICENSE.md",
+                "META-INF/NOTICE.md",
+                "META-INF/versions/**",
+            )
+        }
+    }
+}
+
+// AC-12: a publishable release APK must be signed. Debug and CI builds are
+// unaffected; explicit escape hatch for exotic cases.
+gradle.taskGraph.whenReady {
+    val wantsRelease = allTasks.any { it.name == "assembleRelease" || it.name == "bundleRelease" }
+    if (wantsRelease && !keystorePropsFile.exists() && !project.hasProperty("allowUnsignedRelease")) {
+        throw GradleException(
+            "keystore.properties not found - release build would be UNSIGNED. " +
+            "Add keystore.properties or pass -PallowUnsignedRelease."
+        )
+    }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+dependencies {
+    // Hidden BYD framework classes the push listeners subclass. compileOnly: the head unit
+    // provides the real ones, and nothing from the stubs module may land in the APK.
+    compileOnly(project(":bydauto-stubs"))
+
+    // The push listener classes must load in unit tests; on the head unit the framework provides
+    // them, so this is a test-runtime substitute, not a packaged dependency.
+    testImplementation(project(":bydauto-stubs"))
+
+    // Compose
+    implementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.activity:activity-compose:1.9.3")
+    implementation("androidx.navigation:navigation-compose:2.8.5")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+
+    // Room
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
+
+    // Hilt
+    implementation("com.google.dagger:hilt-android:2.53.1")
+    ksp("com.google.dagger:hilt-compiler:2.53.1")
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+
+    // OkHttp
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // MySQL direct sync hub: the car upserts trips/charges/battery rows into a shared MySQL
+    // that BydMate_Mobile reads. MariaDB's own driver mis-parses this server's DML OK-packet
+    // (SELECTs return, every INSERT hangs), so the official Connector/J is required.
+    implementation("com.mysql:mysql-connector-j:8.4.0")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+
+    // osmdroid (maps)
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
+
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+
+    // WorkManager
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+    implementation("androidx.hilt:hilt-work:1.2.0")
+    ksp("androidx.hilt:hilt-compiler:1.2.0")
+
+    // Lifecycle
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-service:2.8.7")
+
+    // JSON parsing
+    implementation("org.json:json:20231013")
+
+    // Sun/moon position calculation for time_of_day trigger
+    implementation("org.shredzone.commons:commons-suncalc:3.7")
+
+    // AppCompat (required for AppCompatDelegate.setApplicationLocales per-app language support)
+    implementation("androidx.appcompat:appcompat:1.6.1")
+
+    // X.509 self-signed certificate for the ADB TLS (STLS) handshake — the platform's
+    // stripped com.android.org.bouncycastle has no certificate builder. The provider is
+    // passed explicitly to the builders, never registered globally.
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.85")
+
+    // Hidden-API bypass: allows in-process ServiceManager.getService() on Android 9+
+    // to reach the helper binder without UnsatisfiedLinkError / NoSuchMethodError.
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:4.3")
+
+    // Testing
+    testImplementation("org.jetbrains.kotlin:kotlin-reflect:2.1.0")
+    testImplementation("io.mockk:mockk:1.13.10")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("androidx.test:core:1.6.1")
+    testImplementation("androidx.test.ext:junit:1.2.1")
+    testImplementation("androidx.room:room-testing:2.6.1")
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
+    testImplementation("app.cash.turbine:turbine:1.0.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("io.kotest:kotest-property-jvm:6.2.5")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.1")
+    androidTestImplementation("androidx.room:room-testing:2.6.1")
+
+    // ADB-on-device for autoservice access (path H, read-only)
+    // com.cgutman:adblib does not exist on MavenCentral (only com.tananaev:adblib does).
+    // Task 4 will use a hand-rolled ADB client fallback.
+    // implementation("com.cgutman:adblib:1.0.0")
+
+    // Offline TTS: sherpa-onnx piper VITS. No Maven artifact exists — prebuilt AAR from
+    // GitHub releases, onnxruntime statically linked (single libsherpa-onnx-jni.so, arm64).
+    // STRICTLY >= 1.13.3: 1.13.2 crashed on int8 re-generation (k2-fsa/sherpa-onnx#3675).
+    implementation(files("libs/sherpa-onnx-static-link-onnxruntime-1.13.3.aar"))
+    // tar.bz2 unpack for downloaded piper voice archives
+    implementation("org.apache.commons:commons-compress:1.27.1")
+}
+
+// Coverage report only — no verification rule, nothing fails on a low number.
+// Report: ./gradlew :app:koverHtmlReportDebug
+kover {
+    reports {
+        filters {
+            excludes {
+                classes(
+                    // Hilt / Dagger generated
+                    "*_Factory", "*_Factory\$*",
+                    "*_HiltModules*",
+                    "Hilt_*",
+                    "*_MembersInjector",
+                    "dagger.hilt.*",
+                    "*_GeneratedInjector",
+                    "*ComposableSingletons*",
+                    // Room generated
+                    "*_Impl",
+                    "*BuildConfig*",
+                )
+                // Compose screens are not the coverage target
+                packages("com.bydmate.app.ui")
+            }
+        }
+    }
+}
+
+// Static analysis, report-only for existing code: everything currently flagged
+// is frozen in config/detekt/baseline.xml, only NEW findings fail the build.
+detekt {
+    buildUponDefaultConfig = true
+    config.setFrom("$rootDir/config/detekt/detekt.yml")
+    baseline = file("$rootDir/config/detekt/baseline.xml")
+    autoCorrect = false
+}

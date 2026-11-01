@@ -1,0 +1,2210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BYDMate</string>
+    <string name="cluster_a11y_description">Перехват кнопок руля для проекции навигации на приборную панель. Включается вручную, работает только при включённой функции.</string>
+    <string name="settings_language_title">Язык</string>
+    <string name="settings_font_scale_title">Размер текста</string>
+    <string name="settings_font_scale_desc">Действует на экраны приложения и окна голосового агента. Виджет и приборка не меняются.</string>
+    <string name="settings_font_scale_normal">Обычный</string>
+    <string name="settings_font_scale_large">Крупный</string>
+    <string name="settings_font_scale_xlarge">Очень крупный</string>
+
+    <!-- Settings: Navigation rail -->
+    <string name="settings_title">Настройки</string>
+    <string name="settings_rail_sections_label">Разделы</string>
+
+    <!-- Settings: Section labels (left pane) -->
+    <string name="settings_section_auto_battery_title">Авто и батарея</string>
+    <string name="settings_section_trips_title">Поездки</string>
+    <string name="settings_section_integrations_title">Интеграции</string>
+    <string name="settings_section_widget_title">Виджет</string>
+    <string name="settings_section_display_title">Дисплей</string>
+    <!-- Settings: Display section (cluster projection) -->
+    <string name="settings_display_state_on">Включено</string>
+    <string name="settings_display_state_off">Выключено</string>
+    <string name="settings_display_card_mirror_title">Проекция на приборку</string>
+    <string name="settings_display_card_mirror_sub">Навигатор кнопкой на руле. %1$s</string>
+    <string name="settings_display_card_mirror_sub_app">Навигатор кнопкой на руле. %1$s, %2$s</string>
+    <string name="settings_display_card_hud_title">Проекция на лобовое (HUD)</string>
+    <string name="settings_display_card_hud_sub">Подсказки навигатора на штатный HUD. %1$s</string>
+    <string name="settings_display_card_blindspot_sub">Камера по поворотнику. %1$s</string>
+    <string name="settings_display_window_subhead">Окно на приборке</string>
+    <string name="settings_display_mirror_header">Вывод на приборку</string>
+    <string name="settings_display_mirror_title">Вывод на приборку кнопкой руля</string>
+    <string name="settings_display_mirror_desc">Короткое нажатие выбранной кнопки руля переносит выбранное приложение на приборку и обратно.</string>
+    <string name="settings_cluster_auto_container_title">Сразу показывать на приборке</string>
+    <string name="settings_cluster_auto_container_desc">Приложение само переключает приборку в режим проекции и обратно (навигатор и камеры слепых зон). Выключите, если после этого с приборки пропадает ADAS или штатный виджет и не возвращается сам: тогда режим приборки переключайте вручную, а картинка будет видна в мини-карте</string>
+    <string name="settings_cluster_full_display_title">Полный экран приборки</string>
+    <string name="settings_cluster_full_display_desc">По умолчанию карта занимает верх приборки, а внизу остаётся штатная полоса со скоростью и основными показателями. Включите, если хотите карту на всю приборку без этой полосы. Работает только на прошивках с новым интерфейсом, на остальных ничего не меняет. Применяется при следующем выводе на приборку</string>
+    <string name="settings_cluster_direct_reboot_hint">Чтобы голосовой агент видел навигатор на приборке, один раз перезагрузите ДиЛинк: зажмите и удерживайте колёсико громкости. Просто заглушить машину недостаточно. До перезагрузки проекция работает, но агент не видит маршрут.</string>
+    <string name="cluster_direct_unsupported_hint">Прямой вывод недоступен на прошивке этой машины, используется совместимый режим</string>
+    <string name="settings_projection_mode_title">Режим проекции</string>
+    <string name="settings_projection_mode_direct">Расширенный</string>
+    <string name="settings_projection_mode_vd">Заводской</string>
+    <string name="settings_projection_mode_help" formatted="false">Заводской: как в версиях до 3.6, системные настройки машины не меняются, точнее работают ползунки подстройки. Минус: голосовой агент и HUD не видят экран навигатора, подсказки только из уведомления. Расширенный: навигатор работает прямо на приборке, его видят агент и HUD. Включает системный оконный режим, нужна однократная перезагрузка ДиЛинка. Возврат к заводу: переключите на Заводской, системная настройка вернётся к заводскому значению и полностью применится после перезагрузки. Режим применяется при следующем выводе на приборку.</string>
+    <string name="projection_extended_confirm_title">Включить расширенный режим?</string>
+    <string name="projection_extended_confirm_body">Расширенный режим меняет системную настройку оконного режима ДиЛинка, чтобы навигатор работал прямо на приборке и его видели голосовой агент и HUD. Понадобится однократная перезагрузка ДиЛинка. Чтобы вернуть заводское состояние, переключите обратно на Заводской и перезагрузите ДиЛинк.</string>
+    <string name="projection_extended_confirm_enable">Включить</string>
+    <string name="projection_extended_confirm_cancel">Отмена</string>
+    <string name="settings_display_app_title">Приложение на приборку</string>
+    <string name="settings_display_size_header">Размер окна на приборке</string>
+    <string name="settings_display_size_width">Ширина</string>
+    <string name="settings_display_size_width_desc" formatted="false">Ширина окна в % от ширины приборки</string>
+    <string name="settings_display_size_height">Высота</string>
+    <string name="settings_display_size_height_desc" formatted="false">Высота окна в % от высоты приборки</string>
+    <string name="settings_display_offset_x">Сдвиг по горизонтали</string>
+    <string name="settings_display_offset_x_desc">Положение окна: 0 - левый край, 50 - центр, 100 - правый край</string>
+    <string name="settings_display_offset_y">Сдвиг по вертикали</string>
+    <string name="settings_display_offset_y_desc">Положение окна: 0 - верх, 50 - центр, 100 - низ</string>
+    <string name="settings_display_scale">Масштаб</string>
+    <string name="settings_display_scale_desc">Крупность интерфейса: меньше значение - мельче элементы и больше карты в окне</string>
+    <string name="settings_display_scale_direct_hint">Чтобы применить новый масштаб, выключите и снова включите вывод на приборку.</string>
+    <!-- Steering-wheel button names (cluster trigger picker) -->
+    <string name="steering_button_right_star">Правая звезда</string>
+    <string name="steering_button_left_star">Левая звезда</string>
+    <string name="steering_button_carousel">Карусель приборки</string>
+    <string name="steering_button_surround_view">Обзор 360°</string>
+    <string name="steering_button_voice">Голосовой ассистент</string>
+    <string name="steering_button_aux_left">Доп. левая</string>
+    <string name="steering_button_aux_right">Доп. правая</string>
+    <string name="steering_button_unknown">Кнопка (код %1$d)</string>
+    <!-- Cluster trigger-button picker + learn dialog -->
+    <string name="settings_display_button_title">Кнопка запуска</string>
+    <string name="settings_display_button_change">Изменить</string>
+    <string name="learn_button_dialog_title">Назначить кнопку</string>
+    <string name="learn_button_waiting">Нажмите кнопку на руле…</string>
+    <string name="learn_button_rejected">Эту кнопку нельзя назначить. Нажмите другую.</string>
+    <string name="learn_button_captured">Кнопка распознана:</string>
+    <string name="learn_button_timeout">Кнопка не распознана. Возможно, она не передаётся системе. Попробуйте другую.</string>
+    <string name="learn_button_save">Сохранить</string>
+    <string name="learn_button_again">Заново</string>
+    <string name="learn_button_cancel">Отмена</string>
+    <!-- Volume knob on the steering wheel: play/pause instead of audio-source switch -->
+    <string name="settings_knob_play_pause_title">Колёсико громкости на руле</string>
+    <string name="settings_knob_play_pause_desc">Нажатие ставит на паузу и продолжает воспроизведение, а не переключает источник звука. Нужно после обновления прошивки, где нажатие стало менять источник.</string>
+    <string name="settings_cluster_music_card_title">Трек на приборке</string>
+    <string name="settings_cluster_music_card_desc">Показывает название и исполнителя в карточке музыки на приборке для плееров, которые штатная прошивка пропускает: Яндекс Навигатор (Алиса), Яндекс Музыка, Spotify, интернет-радио и другие. Свои плееры и Bluetooth прошивка заполняет сама.</string>
+
+    <!-- Lyrics pushed to a second screen over the LAN -->
+    <string name="settings_lyrics_display_title">Тексты на отдельном экране</string>
+    <string name="settings_lyrics_display_desc">Находит текст играющего трека в NetEase Music и QQ Music и передаёт его на второй экран по локальной сети: приложение-экран подключается к этому порту и получает название, текст и позицию. Работает с любым плеером, включая музыку по Bluetooth с телефона.</string>
+    <string name="settings_lyrics_display_port_label">Порт</string>
+    <string name="settings_lyrics_display_status">Укажите на экране: %1$s · подключено: %2$d (%3$s)</string>
+
+    <!-- ADB restore after reboot (firmwares 2606+) -->
+    <string name="settings_adb_restore_title">Восстанавливать ADB после перезагрузки</string>
+    <string name="settings_adb_restore_desc">Для прошивок, где ADB выключается при каждой перезагрузке. Нужен включённый Wi-Fi.</string>
+    <string name="settings_adb_restore_help_title">Как работает восстановление ADB</string>
+    <string name="settings_adb_restore_help_body">На новых прошивках DiLink (с лета 2026) порт ADB закрывается при каждой перезагрузке, и BYDMate теряет доступ к функциям управления машиной.\n\nПриложение умеет поднимать ADB заново через встроенную в Android беспроводную отладку. Для этого:\n\n1. Wi-Fi в машине должен быть включён и подключён к сети: домашней, к раздаче с телефона или любой другой. Без Wi-Fi Android не даёт включить беспроводную отладку, это ограничение системы.\n\n2. При первом включении на каждой новой сети на экране появится системный диалог «Allow wireless debugging on this network?». Когда восстановление включено, BYDMate подтверждает его сам через свою службу специальных возможностей. Если она выключена, отметьте «Always allow on this network» и нажмите ALLOW.\n\n3. Один раз, пока ADB ещё работает, приложение выдаёт себе нужное системное разрешение. Если строка состояния показывает «Нужна активация», подключите ADB обычным способом и перезапустите приложение.\n\nЕсли ADB на вашей прошивке и так работает после перезагрузки, включать не нужно: строка состояния покажет «Не требуется».</string>
+    <string name="settings_adb_restore_status_not_needed">Не требуется: ADB уже работает</string>
+    <string name="settings_adb_restore_status_needs_activation">Нужна активация: подключите ADB один раз и перезапустите приложение</string>
+    <string name="settings_adb_restore_status_waiting_wifi">Ожидание Wi-Fi</string>
+    <string name="settings_adb_restore_status_needs_dialog">Подтвердите диалог на экране: «Always allow on this network» и ALLOW</string>
+    <string name="settings_adb_restore_status_connecting">Восстанавливаем…</string>
+    <string name="settings_adb_restore_status_restored">Восстановлено в %1$s</string>
+    <string name="settings_adb_restore_status_failed">Ошибка: %1$s</string>
+    <string name="settings_adb_restore_status_unsupported">Недоступно на Android 10. Если ADB пропал после перезагрузки, включите его снова по инструкции на GitHub, раздел «Активация ADB».</string>
+    <string name="settings_cloud_wifi_title">Облако BYD через Wi-Fi</string>
+    <string name="settings_cloud_wifi_desc">Приложение BYD на телефоне видит машину, когда она в Wi-Fi. На новых серверах BYD нужен китайский VPN.</string>
+    <string name="settings_cloud_wifi_help_title">Как работает облако BYD через Wi-Fi</string>
+    <string name="settings_cloud_wifi_help_body">Без связи с облаком BYD не приходят обновления по воздуху, не работают NFC-ключ и управление машиной из приложения BYD на телефоне.\n\nС этой настройкой BYDMate подключает машину к облаку через Wi-Fi: домашний, раздачу с телефона или любой другой с интернетом.\n\nУсловия:\n\n1. Машинам на новых серверах BYD нужен китайский VPN: сервер пускает только с китайского адреса. Надёжнее всего VPN на роутере, к которому подключена машина: он не зависит от магнитолы. VPN-приложение на самой магнитоле работает, только пока она включена.\n\n2. Если у машины уже есть своя мобильная связь, ничего не меняется: облако и так работает.\n\nКогда вы выключаете настройку, приложение возвращает прежние настройки связи машины.</string>
+    <string name="settings_cloud_wifi_status_connected">Подключено к облаку BYD</string>
+    <string name="settings_cloud_wifi_status_own_cellular">У машины своя мобильная связь, облако работает и так</string>
+    <string name="settings_cloud_wifi_status_waiting">Ждём Wi-Fi с интернетом</string>
+    <string name="settings_cloud_wifi_status_rejected">Машина не приняла настройку связи</string>
+    <string name="settings_cloud_wifi_status_silent">Облако BYD не ответило. Попробуем снова при следующем подключении к Wi-Fi</string>
+    <string name="settings_cloud_wifi_status_refused">Сервер BYD не пускает машину. Нужен китайский VPN</string>
+    <string name="settings_cloud_wifi_status_no_adb">Нет доступа ADB: включите ADB, чтобы пользоваться этой настройкой</string>
+    <string name="settings_cloud_wifi_status_return_pending">Прежние настройки связи пока не вернулись. Попробуем снова при следующем подключении к Wi-Fi</string>
+    <!-- ADB control-channel verdict: Dashboard header, Settings line, dialog, wizard step -->
+    <string name="adb_verdict_not_enabled">ADB не включён: управление не работает</string>
+    <string name="adb_verdict_off_after_reboot">ADB отключился после перезагрузки</string>
+    <string name="adb_verdict_no_access">Нет доступа к ADB</string>
+    <string name="adb_verdict_helper_down">Помощник не запустился</string>
+    <string name="adb_verdict_checking">Проверяем ADB…</string>
+    <string name="adb_verdict_link_how">Как включить</string>
+    <string name="adb_verdict_link_more">Подробнее</string>
+    <string name="adb_dialog_not_enabled_title">ADB не включён</string>
+    <string name="adb_dialog_not_enabled_body">Без ADB не работают живые данные, управление машиной, разделение экрана, приборка и кнопка руля. История поездок доступна.</string>
+    <string name="adb_enable_step_1">1. Включите ADB по инструкции: GitHub BYDMate, раздел «Активация ADB»</string>
+    <string name="adb_enable_step_2">2. Вернитесь в BYDMate и нажмите «Проверить»</string>
+    <string name="adb_dialog_off_after_reboot_title">ADB отключился после перезагрузки</string>
+    <string name="adb_dialog_off_after_reboot_body">На этой прошивке ADB выключается при каждой перезагрузке. BYDMate умеет включать его сам, нужен Wi-Fi.</string>
+    <string name="adb_dialog_off_after_reboot_body_unsupported">На этой прошивке ADB выключается при каждой перезагрузке. Включите его снова по инструкции на GitHub, раздел «Активация ADB».</string>
+    <string name="adb_dialog_no_access_title">Нет доступа к ADB</string>
+    <string name="adb_dialog_no_access_body">Подтвердите запрос на экране или подключите ADB заново, затем нажмите «Проверить».</string>
+    <string name="adb_dialog_helper_down_title">Помощник BYDMate не запустился</string>
+    <string name="adb_dialog_helper_down_body">ADB работает, но помощник не отвечает. Включите запись логов (Настройки, «Сервис и данные», «Запись логов»), подождите минуту, остановите и отправьте файл разработчику.</string>
+    <string name="adb_dialog_close">Закрыть</string>
+    <string name="adb_dialog_check">Проверить</string>
+    <string name="adb_dialog_enable_restore">Включить восстановление</string>
+    <string name="adb_dialog_open_diagnostics">Открыть диагностику</string>
+    <string name="welcome_adb_title">Доступ к машине через ADB</string>
+    <string name="welcome_adb_intro">Без ADB приложение показывает только историю поездок. Включите ADB один раз:</string>
+    <string name="welcome_adb_gives">Что даёт ADB: управление окнами и климатом, разделение экрана, приборка, кнопка руля.</string>
+    <string name="welcome_adb_check_title">Проверка</string>
+    <string name="welcome_adb_state_not_checked">Ещё не проверяли</string>
+    <string name="welcome_adb_state_failed">ADB не включён</string>
+    <string name="welcome_adb_state_ok">ADB работает</string>
+    <string name="welcome_adb_ok_hint">Можно идти дальше.</string>
+    <string name="welcome_adb_check_button">Проверить</string>
+    <string name="welcome_adb_check_again_button">Проверить ещё раз</string>
+    <string name="welcome_adb_checking">Проверяем…</string>
+    <string name="welcome_adb_check_hint">Проверка занимает пару секунд.</string>
+    <string name="welcome_adb_instruction_title">ADB пропадает после перезагрузки?</string>
+    <string name="welcome_adb_instruction_button">Как работает восстановление</string>
+    <!-- Car system section: BYD head unit settings, not app settings -->
+    <string name="settings_car_system_header">Система машины</string>
+    <string name="settings_car_language_title">Язык интерфейса машины</string>
+    <string name="settings_car_language_desc">Только для прошивки UI7. Кнопка открывает скрытый штатный диалог BYD с полным списком языков. Включить русский: выберите «Русский язык», затем OK. Вернуть обратно: та же кнопка, «English», OK. Внимание: на русском языке у части владельцев перестаёт работать автопарковка. Если пользуетесь автопарковкой, оставьте English.</string>
+    <string name="settings_car_language_button">Открыть выбор языка</string>
+    <string name="settings_car_language_unavailable">Диалог выбора языка недоступен на этой прошивке</string>
+    <string name="settings_section_places_title">Места</string>
+    <string name="settings_section_application_title">Приложение</string>
+    <!-- Smart Home section nav label stays Russian per design spec (hidden section) -->
+    <string name="settings_smart_home_section_title">Умный дом</string>
+
+    <!-- Settings: Auto and battery section -->
+    <string name="settings_battery_section_header">Батарея и тарифы</string>
+    <string name="settings_battery_capacity_label">Ёмкость батареи (кВт·ч)</string>
+    <string name="settings_tariff_home_label">Тариф дома (%1$s/кВт·ч)</string>
+    <string name="settings_tariff_dc_label">Тариф DC (%1$s/кВт·ч)</string>
+    <string name="settings_tariff_trip_label">Тариф поездок</string>
+    <string name="settings_tariff_custom_label">Свой тариф (%1$s/кВт·ч)</string>
+    <string name="settings_save_tariffs_button">Сохранить тарифы</string>
+    <string name="settings_tariff_future_note">Новый тариф применяется к будущим поездкам.\nУже посчитанные поездки не изменятся.</string>
+    <string name="settings_recalc_all_button">Пересчитать все поездки</string>
+    <string name="settings_recalc_note">Пересчитает стоимость всех поездок\nпо текущему тарифу.</string>
+    <string name="settings_tariff_periods_title">Тарифы и периоды</string>
+    <string name="settings_tariff_card_period">Период</string>
+    <string name="settings_tariff_periods_button">Открыть</string>
+    <string name="settings_tariff_periods_hint">Добавьте период с нужной датой, и всё после неё пересчитается само.</string>
+    <string name="settings_tariff_periods_empty">Период не задан</string>
+    <string name="settings_tariff_periods_summary">дом %1$s, DC %2$s %3$s/кВт·ч, потери %4$s%% / %5$s%%</string>
+    <string name="settings_tariff_periods_summary_since">с %1$s: %2$s</string>
+    <string name="settings_tariff_period_add">Добавить период</string>
+    <string name="settings_tariff_period_delete">Удалить период</string>
+    <string name="settings_tariff_period_start_label">Действует с</string>
+    <string name="settings_tariff_period_date_taken">На эту дату уже есть период, выберите другую дату.</string>
+    <string name="settings_tariff_period_from_start">с начала истории</string>
+    <string name="settings_tariff_loss_ac_label" formatted="false">Потери AC, %</string>
+    <string name="settings_tariff_loss_dc_label" formatted="false">Потери DC, %</string>
+    <string name="settings_tariff_loss_hint">Оценка. Чтобы уточнить, впишите показание счётчика в карточке зарядки.</string>
+    <string name="settings_tariff_losses_measured">Ваши потери по счётчику: AC %1$s%% (%2$d), DC %3$s%% (%4$d)</string>
+    <string name="settings_tariff_rule_home">Дом</string>
+    <string name="settings_tariff_rule_dc">DC</string>
+    <string name="settings_tariff_rule_charges">По зарядкам</string>
+    <string name="settings_tariff_recalc_done">Пересчитано: зарядок %1$d, поездок %2$d</string>
+    <string name="settings_consumption_section_header">Пороги расхода</string>
+    <string name="settings_consumption_good_label">Хороший &lt; (кВт·ч/100км)</string>
+    <string name="settings_consumption_bad_label">Плохой &gt; (кВт·ч/100км)</string>
+
+    <!-- Settings: Range calculation method (Auto = learned history, Manual = user table) -->
+    <string name="settings_range_calc_section_header">Способ расчёта запаса хода</string>
+    <string name="settings_range_calc_method_label">Метод расчёта</string>
+    <string name="settings_range_calc_auto">Авто</string>
+    <string name="settings_range_calc_manual">Ручной</string>
+    <string name="settings_range_calc_method_desc">«Авто» — по истории поездок и текущему расходу. «Ручной» — по вашей таблице расхода в зависимости от температуры батареи.</string>
+    <string name="settings_range_calc_edit_table_button">Таблица расхода</string>
+    <string name="settings_range_calc_edit_table_desc">5 точек: температура батареи → расход (и, опционально, запас хода на 100% заряда)</string>
+    <string name="range_table_dialog_title">Таблица расхода по температуре батареи</string>
+    <string name="range_table_dialog_note1">Расход (кВт·ч/100км) обязателен; запас хода на 100% заряда — опционален, но заполняется либо во всех строках, либо ни в одной.</string>
+    <string name="range_table_dialog_col_temp">°C</string>
+    <string name="range_table_dialog_col_consumption">Расход, кВт·ч/100км</string>
+    <string name="range_table_dialog_col_range">Запас, км</string>
+    <string name="range_table_dialog_reset">Сбросить по умолчанию</string>
+    <string name="range_table_dialog_cancel">Отмена</string>
+    <string name="range_table_dialog_save">Сохранить</string>
+
+    <!-- Settings: Trips section -->
+    <string name="settings_trips_datasource_header">Источник данных поездок</string>
+    <string name="settings_trips_datasource_note">Titan 3 — BYD energydata.\nSong и другие модели без встроенной БД — DiPlus TripInfo.</string>
+    <string name="settings_trips_datasource_hint">Если список пуст после 2-3 поездок — переключите режим.</string>
+    <string name="settings_trips_system_header">Системные данные (бета)</string>
+    <string name="settings_trips_system_note">Расширенные данные авто: SoH батареи, пробег BMS, статистика зарядок. Только чтение.</string>
+    <string name="settings_trips_system_enable_label">Включить</string>
+    <string name="settings_datasource_switching">Переключение...</string>
+    <string name="settings_datasource_done">Готово</string>
+
+    <!-- Settings: Recalculate confirmation dialog -->
+    <string name="settings_recalc_dialog_title">Пересчитать стоимость?</string>
+    <string name="settings_recalc_dialog_text">Все поездки будут пересчитаны по тарифу %1$s %2$s/кВт·ч.\nУже посчитанные значения будут заменены.</string>
+    <string name="settings_recalc_confirm_button">Пересчитать</string>
+    <string name="settings_cancel_button">Отмена</string>
+
+    <!-- Settings: Integrations section -->
+    <string name="settings_abrp_section_header">ABRP - телеметрия</string>
+    <string name="settings_abrp_telemetry_label">Живые данные -> A Better Route Planner</string>
+    <string name="settings_abrp_telemetry_description">Живые данные (SOC, мощность, температуры, одометр, давление шин) отправляются в Iternio Telemetry API для актуального плана в ABRP. GPS по умолчанию не передаётся.</string>
+    <string name="settings_abrp_token_label">Токен живых данных из ABRP</string>
+    <string name="settings_abrp_save_button">Сохранить ABRP</string>
+    <string name="settings_abrp_location_label">Отправлять координаты в ABRP</string>
+    <string name="settings_abrp_location_description">Для редкого случая: следить за машиной в ABRP с телефона, когда ABRP в самой машине не запущен. Если ABRP открыт в машине, он берёт GPS сам, и с этой настройкой метка на карте начинает прыгать. По умолчанию выключено.</string>
+    <string name="settings_webhook_section_header">Вебхук - телеметрия</string>
+    <string name="settings_webhook_label">Живые данные -> свой сервер</string>
+    <string name="settings_webhook_description">Тот же JSON, что уходит в ABRP (SOC, мощность, температуры, одометр, давление шин, зарядка), отправляется POST-запросом на ваш URL: раз в секунду в движении, раз в 8 секунд на зарядке, раз в 30 секунд на стоянке. Координаты по умолчанию не передаются.</string>
+    <string name="settings_webhook_url_label">URL (https://)</string>
+    <string name="settings_webhook_secret_label">Секрет (заголовок Authorization: Bearer), необязательно</string>
+    <string name="settings_webhook_location_label">Отправлять координаты на вебхук</string>
+    <string name="settings_webhook_location_description">Добавляет GPS-позицию и курс машины в JSON.</string>
+    <string name="settings_webhook_save_button">Сохранить вебхук</string>
+    <string name="settings_webhook_saved">Вебхук сохранён</string>
+    <string name="settings_webhook_invalid_url">Неверный URL</string>
+    <string name="settings_mysql_section_header">MySQL - синхронизация с телефоном</string>
+    <string name="settings_mysql_label">Запись поездок, зарядок и SoH в MySQL</string>
+    <string name="settings_mysql_description">Приложение BydMate_Mobile на телефоне читает эти же таблицы из общей базы MySQL. Автомобиль дописывает поездки, зарядки и снимки батареи при каждом включении зажигания, а текущее состояние — каждые 30 секунд.</string>
+    <string name="settings_mysql_host_label">Хост (адрес сервера MySQL)</string>
+    <string name="settings_mysql_port_label">Порт</string>
+    <string name="settings_mysql_user_label">Пользователь</string>
+    <string name="settings_mysql_password_label">Пароль</string>
+    <string name="settings_mysql_database_label">База данных</string>
+    <string name="settings_mysql_vehicle_label">Идентификатор автомобиля (совпадает с телефоном)</string>
+    <string name="settings_mysql_save_button">Сохранить MySQL</string>
+    <string name="settings_mysql_test_button">Проверить соединение</string>
+    <string name="settings_mysql_sync_button">Синхронизировать сейчас</string>
+    <string name="settings_mysql_testing">Проверка соединения…</string>
+    <string name="settings_mysql_syncing">Синхронизация…</string>
+    <string name="settings_mysql_incomplete">Заполните хост и пользователя</string>
+    <string name="settings_mysql_test_ok">Соединение установлено (MySQL %1$s)</string>
+    <string name="settings_mysql_test_fail">Ошибка соединения: %1$s</string>
+    <string name="settings_mysql_sync_ok">Синхронизировано: %1$d поездок, %2$d зарядок, %3$d снимков, %4$d строк журнала</string>
+    <string name="settings_mysql_sync_fail">Ошибка синхронизации: %1$s</string>
+    <string name="settings_mysql_logs_label">Отправлять журнал приложения в MySQL</string>
+    <string name="settings_mysql_logs_description">Головное устройство нельзя подключить к отладчику, поэтому строки журнала уезжают в таблицу app_logs и причина разбирается по базе. Отправляются строки выбранного уровня и 15 строк перед каждой из них: исключение без предыстории ничего не объясняет. Координаты, телефоны, VIN, токены и пароли вырезаются до отправки. Не больше 300 строк за синхронизацию и 20 000 в сутки, хранится 30 дней.</string>
+    <string name="settings_mysql_logs_level_label">Уровень срабатывания (более низкие уходят только как контекст)</string>
+    <string name="settings_mysql_level_verbose">Подробно</string>
+    <string name="settings_mysql_level_debug">Отладка</string>
+    <string name="settings_mysql_level_info">Инфо</string>
+    <string name="settings_mysql_level_warn">Предупр</string>
+    <string name="settings_mysql_level_error">Ошибки</string>
+    <string name="settings_openrouter_section_header">OpenRouter</string>
+    <string name="settings_openrouter_api_key_label">OpenRouter API Key</string>
+    <string name="settings_openrouter_model_selected">Модель: %1$s</string>
+    <string name="settings_openrouter_model_pick">Выбрать модель</string>
+    <string name="settings_exa_section_header">Exa</string>
+    <string name="settings_exa_search_hint">Для поиска в интернете голосовым агентом. Без ключа поиск идёт через OpenRouter</string>
+
+    <!-- Settings: Model picker dialog -->
+    <string name="settings_model_picker_title">Выбор модели</string>
+    <string name="settings_model_picker_search_label">Поиск</string>
+    <string name="settings_model_picker_loading">Загрузка моделей...</string>
+
+    <!-- Settings: Widget section -->
+    <string name="settings_widget_section_header">Плавающий виджет</string>
+    <string name="settings_widget_show_soc_label">Показывать виджет SOC</string>
+    <string name="settings_widget_hints">• Долгий тап на виджете - скрыть до следующего открытия BYDMate.\n• Перетащить в корзину внизу - выключить совсем.\n• Обычный тап - открыть BYDMate.</string>
+    <string name="settings_widget_hide_youtube_label">Скрывать при YouTube</string>
+    <string name="settings_widget_hide_youtube_description">Панель кнопок прячется, пока YouTube на экране</string>
+    <string name="settings_widget_home_only_label">Показывать только на главном экране</string>
+    <string name="settings_widget_home_only_description">В других приложениях панель кнопок прячется сама</string>
+    <string name="settings_widget_hide_apps_label">Скрывать в приложениях</string>
+    <string name="settings_widget_hide_apps_description">Панель кнопок прячется, пока выбранное приложение на экране</string>
+    <string name="settings_widget_hide_apps_none">Не выбрано</string>
+    <string name="settings_widget_hide_apps_count">Выбрано: %1$d</string>
+    <string name="settings_widget_reset_position_button">Сбросить позицию</string>
+    <string name="settings_reset_seat_channel">Сбросить канал сидений</string>
+    <string name="settings_reset_seat_channel_hint">Если подогрев или вентиляция сидений не срабатывают после смены машины</string>
+    <string name="settings_reset_trip_source">Сбросить определение источника поездок</string>
+    <string name="settings_reset_trip_source_hint">Если поездки не записываются: приложение заново проверит, ведёт ли машина свою базу поездок, и при необходимости включит собственную запись</string>
+    <string name="orb_you">Ты:</string>
+    <string name="orb_agent">Агент:</string>
+    <string name="settings_voice_native_assistant_header">Штатный голосовой помощник BYD</string>
+    <string name="settings_voice_disable_native_label">Отключить штатный голосовой помощник</string>
+    <string name="settings_voice_disable_native_description">Скрывает встроенный голосовой ассистент BYD, чтобы он не перебивал. Вместе с ним пропадает и приложение Shortcuts (быстрые команды), это его часть. Обратимо: выключите тумблер и перезагрузите мультимедиа, оба вернутся. Перед удалением BYDMate выключите этот тумблер, иначе штатный помощник останется отключённым.</string>
+    <string name="settings_voice_disable_native_confirm_title">Отключить штатный помощник?</string>
+    <string name="settings_voice_disable_native_confirm_body">Штатный помощник BYD будет отключён в системе машины. Перед удалением BYDMate выключите этот тумблер, иначе штатный помощник останется отключённым. Если приложение уже удалено: установите BYDMate снова, выключите тумблер и перезагрузите мультимедиа.</string>
+    <string name="settings_voice_disable_native_confirm_button">Отключить</string>
+    <string name="settings_voice_native_assistant_reboot_note">Изменение вступит в силу после перезагрузки головного устройства.</string>
+    <string name="settings_widget_opacity_label">Прозрачность</string>
+    <string name="settings_widget_scale_label">Размер</string>
+    <string name="settings_widget_tap_section_header">Тап по виджету</string>
+    <string name="settings_widget_left_tap_zoning_label">Зонирование тапов</string>
+    <string name="settings_widget_left_tap_zoning_description">Левая 1/3 - открывает выбранное приложение; остальное - BYDMate.</string>
+    <string name="settings_widget_left_tap_label">Приложение для левого тапа</string>
+    <string name="settings_widget_left_tap_description">По умолчанию Яндекс.Навигатор. Если приложение удалено, тап не сработает.</string>
+    <string name="settings_widget_buttons_label">Кнопки на виджете</string>
+    <string name="settings_widget_buttons_description">Один тап по виджету выдвигает 4 кнопки, двойной тап открывает BYDMate. Кнопка запускает правило с триггером «Нажатие кнопки».</string>
+
+    <!-- Settings: Places section -->
+    <string name="settings_places_section_header">Места</string>
+    <string name="settings_places_entry_title">Точки для автоматизации</string>
+    <string name="settings_places_entry_description">Дом, работа, любимые места - триггеры «Въезд» / «Выезд»</string>
+
+    <!-- Settings: Application section -->
+    <string name="settings_app_units_header">Единицы и валюта</string>
+    <string name="settings_app_distance_label">Расстояние</string>
+    <string name="settings_app_currency_label">Валюта</string>
+    <string name="settings_charge_connector_label">Разъём для зарядки</string>
+    <string name="settings_charge_connector_desc">Помощник ищет зарядки с этим разъёмом</string>
+    <string name="settings_map_tile_source_label">Источник карты</string>
+    <string name="settings_app_data_header">Данные</string>
+    <string name="settings_log_recording_start_button">Запись логов</string>
+    <string name="settings_log_recording_stop_button">Остановить запись</string>
+    <string name="settings_about_header">О приложении</string>
+    <string name="settings_copyright">© 2026 AndyShaman</string>
+    <string name="settings_weather_attribution">Данные о погоде: Open-Meteo.com</string>
+    <string name="settings_autostart_recorded">Автозапуск: %1$s</string>
+    <string name="settings_autostart_not_recorded">Автозапуск: не зафиксирован</string>
+    <string name="settings_autostart_open_button">Настройка автозапуска</string>
+    <string name="settings_update_check_toggle_label">Проверять обновления</string>
+    <string name="settings_update_check_toggle_description">Через 30 секунд после запуска проверять GitHub и предлагать обновиться</string>
+    <string name="settings_update_check_button">Проверить обновления сейчас</string>
+
+    <!-- Settings: Autoservice status -->
+    <string name="settings_autoservice_disconnected_title">не подключено</string>
+    <string name="settings_autoservice_disconnected_detail">перезапустите приложение, если ADB уже включён</string>
+    <string name="settings_autoservice_sentinel_title">подключено, но данные не читаются</string>
+    <string name="settings_autoservice_sentinel_detail">возможно функция работает только на Leopard 3</string>
+    <string name="settings_autoservice_connected_title">подключено</string>
+    <string name="settings_autoservice_connected_detail">SoH %1$s • lifetime %2$s / %3$s</string>
+
+    <!-- Settings: Update dialog -->
+    <string name="settings_update_dialog_title">Обновления</string>
+    <string name="settings_update_current_version">Текущая версия: v%1$s</string>
+    <string name="settings_update_check_now_button">Проверить обновления</string>
+    <string name="settings_update_checking">Проверка...</string>
+    <string name="settings_update_up_to_date">Установлена последняя версия</string>
+    <string name="settings_update_available_version">Доступна версия: v%1$s</string>
+    <string name="settings_update_whats_new_label">Что нового:</string>
+    <string name="settings_update_install_button">Скачать и установить</string>
+    <string name="settings_update_downloading">Скачивается v%1$s</string>
+    <string name="settings_update_error">Ошибка: %1$s</string>
+    <string name="settings_update_retry_button">Попробовать снова</string>
+    <string name="settings_update_close_button">Закрыть</string>
+
+    <!-- Trips screen -->
+    <string name="trips_filter_all">Все</string>
+    <string name="trips_filter_trips_only">Поездки</string>
+    <string name="trips_filter_stops_only">Стоянки</string>
+    <string name="trips_empty">Нет данных за выбранный период</string>
+    <string name="trips_empty_today">За сегодня поездок пока нет. Текущая появится после завершения.</string>
+    <string name="trips_empty_week">За эту неделю поездок пока нет. Текущая появится после завершения.</string>
+    <string name="trips_col_time">время</string>
+    <string name="trips_col_duration">длит.</string>
+    <string name="trips_col_km">км</string>
+    <string name="trips_col_soc">SOC</string>
+    <string name="trips_col_kwh">кВт·ч</string>
+    <string name="trips_chart_kwh_chip">кВтч</string>
+    <string name="trips_chart_no_data">Нет данных</string>
+    <string name="trips_chart_tooltip_count">%1$s · %2$d поезд.</string>
+    <!-- Formatted value labels used in month/day summary rows -->
+    <string name="trips_km_value">%1$.0f км</string>
+    <string name="trips_kwh_value">%1$.0f кВт·ч</string>
+    <string name="trips_km_decimal_value">%1$.1f км</string>
+    <string name="trips_kwh_decimal_value">%1$.1f кВт·ч</string>
+
+    <!-- TripDetailDialog -->
+    <string name="trip_detail_title_trip">Поездка</string>
+    <string name="trip_detail_title_stop">Стоянка</string>
+    <string name="trip_detail_gps_unavailable">GPS-данные недоступны</string>
+    <string name="trip_detail_distance_label">Дистанция</string>
+    <string name="trip_detail_distance_value">%1$.1f км</string>
+    <string name="trip_detail_duration_label">Длительность</string>
+    <string name="trip_detail_avg_speed_label">Ср. скорость</string>
+    <string name="trip_detail_speed_value">%1$.0f км/ч</string>
+    <string name="trip_detail_max_speed_label">Макс. скорость</string>
+    <string name="trip_detail_consumption_label">Потребление</string>
+    <string name="trip_detail_consumption_value">%1$.1f кВт·ч</string>
+    <string name="trip_detail_efficiency_label">Расход</string>
+    <string name="trip_detail_efficiency_value">%1$.1f кВт·ч/100</string>
+    <string name="trip_detail_cost_label">Стоимость</string>
+    <string name="trip_detail_date_pattern">EEEE, d MMMM</string>
+    <string name="trip_detail_close">Закрыть</string>
+    <string name="trip_detail_odometer_start_label">Одометр на старте</string>
+    <string name="trip_detail_odometer_end_label">Одометр на финише</string>
+    <string name="trip_detail_odometer_label">Одометр</string>
+    <string name="trip_detail_odometer_value">%1$,.1f км</string>
+    <string name="trip_detail_moving_label">В движении</string>
+    <string name="trip_detail_cost_per_100_label">На 100 км</string>
+    <string name="trip_detail_soc_label">Заряд</string>
+    <string name="trip_detail_ext_temp_label">За бортом</string>
+
+    <!-- Charges screen -->
+    <string name="charges_filter_all">Все</string>
+    <string name="charges_add_button">+ зарядка</string>
+    <string name="charges_empty">Нет зарядок за выбранный период</string>
+    <string name="charges_col_time">время</string>
+    <string name="charges_col_kwh">кВт·ч</string>
+    <string name="charges_kwh_value">%1$.0f кВт·ч</string>
+    <string name="charges_action_edit">Изменить</string>
+    <string name="charges_action_delete">Удалить</string>
+    <string name="charges_delete_dialog_title">Удалить зарядку?</string>
+    <string name="charges_delete_dialog_text">%1$s кВт·ч - восстановить будет нельзя.</string>
+    <string name="trips_delete_dialog_title">Удалить поездку?</string>
+    <string name="trips_delete_dialog_text">%1$s км - поездка и её маршрут будут удалены, восстановить будет нельзя.</string>
+    <string name="charges_onboarding_empty_text">Статистика зарядок недоступна. Чтобы видеть кВт·ч и стоимость каждой зарядки - включи «Системные данные» в Настройках.</string>
+    <string name="charges_go_to_settings_button">Перейти в Настройки</string>
+    <string name="charges_sentinel_empty_text">На вашей модели машины статистика зарядок недоступна - диагностические данные не читаются. SoH тоже не показывается.</string>
+    <string name="charges_not_tracking_banner">Новые зарядки сейчас не отслеживаются.</string>
+    <string name="charges_enable_tracking_button">Включить →</string>
+    <string name="charges_stats_period_label">За выбранный период</string>
+    <string name="charges_stats_sessions">Сессий</string>
+    <string name="charges_stats_cost">Стоимость</string>
+    <string name="charges_stats_lifetime_label">Lifetime (системные данные)</string>
+    <string name="charges_stats_pumped_total">Прокачано всего</string>
+    <string name="charges_stats_equiv_cycles">Эквив. циклов</string>
+    <string name="charges_stats_bms_mileage">Пробег BMS</string>
+    <string name="charges_stats_per100km">/100км lifetime</string>
+    <string name="charges_lifetime_waiting">Жду первого ответа от машины…</string>
+    <string name="charges_lifetime_enable_hint">Включите «Системные данные» в Настройках, чтобы видеть пробег BMS и общий объём зарядок.</string>
+    <string name="charges_stats_dynamics_label">Динамика</string>
+    <string name="charges_chart_cell_delta_title">Δ ячеек (В)</string>
+    <string name="charges_chart_cell_delta_placeholder">Δ ячеек: будет показано после 3 завершённых зарядок (сейчас: %1$d)</string>
+    <string name="charges_chart_bat_temp_title">Темп. батареи (°C)</string>
+    <string name="charges_chart_bat_temp_placeholder">Температура: будет показано после 3 завершённых зарядок (сейчас: %1$d)</string>
+
+    <!-- Charge edit dialog -->
+    <string name="charges_edit_dialog_title">Изменить зарядку</string>
+    <string name="charges_edit_date_label">Дата</string>
+    <string name="charges_edit_type_label">Тип:</string>
+    <string name="charges_edit_kwh_label">кВт·ч:</string>
+    <string name="charges_edit_kwh_from_soc">из SOC × %1$.1f кВт·ч</string>
+    <string name="charges_edit_cost_label">Стоимость:</string>
+    <string name="charges_edit_tariff_label">%1$s/кВт·ч:</string>
+    <string name="charges_edit_save_button">Сохранить</string>
+    <string name="charges_edit_meter_label">Счётчик:</string>
+    <string name="charges_edit_meter_used">считаем по счётчику</string>
+    <string name="charges_edit_loss_estimate">с потерями %1$.0f%%</string>
+    <string name="charges_edit_follow_period">Считать по периоду</string>
+
+    <!-- Automation screen -->
+    <string name="automation_tab_title">Автоматизация</string>
+
+    <!-- Filter chips -->
+    <string name="automation_filter_all">Все</string>
+    <string name="automation_filter_active">Активные</string>
+    <string name="automation_filter_disabled">Выключенные</string>
+
+    <!-- Header buttons -->
+    <string name="automation_journal_button">Журнал</string>
+    <string name="automation_create_button">+ Создать</string>
+
+    <!-- Rule card context menu -->
+    <string name="automation_menu_edit">Изменить</string>
+    <string name="automation_menu_delete">Удалить</string>
+
+    <!-- Delete confirmation dialog -->
+    <string name="automation_delete_confirm_title">Удалить правило?</string>
+    <string name="automation_delete_confirm_text">Это действие нельзя отменить.</string>
+    <string name="automation_delete_button">Удалить</string>
+    <string name="automation_cancel_button">Отмена</string>
+
+    <!-- Rule card stats -->
+    <string name="automation_rule_cooldown">Пауза: %1$d сек</string>
+
+    <!-- Editor dialog -->
+    <string name="automation_editor_new_rule_title">Новое правило</string>
+    <string name="automation_rule_name_placeholder">Название правила</string>
+    <string name="automation_section_when">КОГДА (условия)</string>
+    <string name="automation_section_then">ТОГДА (действия)</string>
+    <string name="automation_section_settings">НАСТРОЙКИ</string>
+
+    <!-- Settings section in editor -->
+    <string name="automation_setting_park_only">Только на парковке (P)</string>
+    <string name="automation_setting_confirm_before">Спрашивать перед выполнением</string>
+    <string name="automation_setting_once_per_trip">Выполнить один раз за поездку</string>
+
+    <!-- Editor footer buttons -->
+    <string name="automation_save_button">Сохранить</string>
+
+    <!-- Trigger controls -->
+    <string name="automation_trigger_place_deleted">Место удалено</string>
+    <string name="automation_trigger_place_enter_label">Въезд</string>
+    <string name="automation_trigger_place_exit_label">Выезд</string>
+    <string name="automation_trigger_place_enter_prefix">Въезд в</string>
+    <string name="automation_trigger_place_exit_prefix">Выезд из</string>
+    <string name="automation_trigger_place_deleted_placeholder">&lt;удалено&gt;</string>
+    <string name="automation_trigger_day">День</string>
+    <string name="automation_trigger_night">Ночь</string>
+    <string name="automation_trigger_dawn">Рассвет</string>
+    <string name="automation_trigger_dusk">Закат</string>
+    <string name="automation_trigger_service_start">Запуск BYDMate</string>
+    <string name="automation_trigger_internet">Доступен интернет</string>
+
+    <!-- Add trigger button -->
+    <string name="automation_add_condition_button">+ Добавить условие</string>
+    <string name="automation_trigger_type_param">Параметр</string>
+    <string name="automation_trigger_type_place">Место</string>
+    <string name="automation_trigger_type_place_empty_hint">Сначала добавьте место кнопкой «Места» вверху экрана</string>
+    <string name="automation_trigger_type_time_of_day">Время суток</string>
+    <string name="automation_trigger_type_schedule">Время / расписание</string>
+    <string name="automation_trigger_type_service_start">Запуск BYDMate</string>
+    <string name="automation_trigger_type_internet">Доступен интернет</string>
+    <string name="automation_trigger_type_button_press">Нажатие кнопки</string>
+    <string name="automation_trigger_button_label">Кнопка %1$d</string>
+    <string name="automation_trigger_type_steering_key">Клавиша руля</string>
+    <string name="automation_trigger_steering_key_unassigned">Клавиша не назначена</string>
+    <string name="automation_trigger_steering_key_assign">назначить</string>
+    <string name="automation_steering_key_occupied_projection">Эта клавиша включает навигацию на приборке. Освободите её в Настройках, раздел Дисплей, или выберите другую.</string>
+    <string name="automation_steering_key_occupied_voice">Эта клавиша вызывает голосового помощника BYDMate. Измените клавишу в Настройках, раздел Голос-агент, или выберите другую.</string>
+    <string name="automation_steering_key_occupied_knob">Нажатие колёсика занято функцией play/pause. Выключите её в Настройках, раздел Дисплей, или выберите другую клавишу.</string>
+    <string name="automation_trigger_type_voice">Голос</string>
+    <string name="automation_trigger_voice_phrase_label">Фраза-триггер</string>
+    <string name="automation_voice_phrase_empty">Голосовая фраза пуста</string>
+    <string name="automation_voice_phrase_taken">Эта фраза уже используется: %1$s</string>
+
+    <!-- Schedule trigger (exact time / range + days of week) -->
+    <string name="automation_schedule_mode_exact">Точное</string>
+    <string name="automation_schedule_mode_range">Промежуток</string>
+    <string name="automation_schedule_time_label">Время:</string>
+    <string name="automation_schedule_from">С:</string>
+    <string name="automation_schedule_to">До:</string>
+    <string name="automation_schedule_days_label">Дни недели (пусто = каждый день):</string>
+    <string name="automation_day_mon">Пн</string>
+    <string name="automation_day_tue">Вт</string>
+    <string name="automation_day_wed">Ср</string>
+    <string name="automation_day_thu">Чт</string>
+    <string name="automation_day_fri">Пт</string>
+    <string name="automation_day_sat">Сб</string>
+    <string name="automation_day_sun">Вс</string>
+
+    <!-- Action row: delay -->
+
+    <!-- Add action button -->
+    <string name="automation_add_action_button">+ Добавить действие</string>
+    <string name="automation_action_dplus_command">Команда автомобилю</string>
+    <string name="automation_action_notification">Уведомление</string>
+    <string name="automation_action_app_launch">Запуск приложения</string>
+    <string name="automation_action_app_close">Закрыть приложение</string>
+    <string name="automation_action_app_close_hint">Приложение закроется полностью. Маршрут или музыка, которые в нём не сохранены, пропадут.</string>
+    <string name="automation_action_media_play">Медиа: играть</string>
+    <string name="automation_action_media_pause">Медиа: пауза</string>
+    <string name="automation_action_media_key_hint">Сработает, если плеер уже запущен: чтобы его запустить, поставьте перед этим шагом «Запуск приложения».</string>
+    <string name="automation_action_yandex_music">Яндекс.Музыка</string>
+    <string name="automation_action_call">Звонок</string>
+    <string name="automation_action_navigate">Маршрут в Я.Навигаторе</string>
+    <string name="automation_action_url">Открыть URL</string>
+    <string name="automation_action_delay">Пауза</string>
+    <string name="automation_action_media_volume">Громкость медиа</string>
+    <string name="automation_action_media_volume_label">Громкость</string>
+    <string name="automation_action_sentry">Режим охраны</string>
+    <string name="automation_action_sentry_on">Включить</string>
+    <string name="automation_action_sentry_off">Отключить</string>
+    <string name="automation_action_cluster_projection">Вывод на приборку</string>
+    <string name="automation_action_cluster_projection_on">Включить</string>
+    <string name="automation_action_cluster_projection_off">Отключить</string>
+    <string name="automation_action_toggle">Переключить</string>
+    <string name="automation_action_toggle_display_name">Переключить: %1$s</string>
+    <string name="auto_act_toggle_catalog">%1$s: переключить</string>
+    <string name="automation_action_toggle_short">Переключить</string>
+    <string name="toggle_target_trunk">Багажник</string>
+    <string name="toggle_target_front_trunk">Передний багажник</string>
+    <string name="toggle_target_sunroof">Люк</string>
+    <string name="toggle_target_locks">Замки дверей</string>
+    <string name="toggle_target_cluster">Вывод на приборку</string>
+    <string name="toggle_target_sentry">Режим охраны</string>
+    <string name="toggle_target_hazard">Аварийка</string>
+    <string name="toggle_target_climate">Климат</string>
+    <string name="toggle_target_seat_heat_driver">Подогрев сиденья водителя</string>
+    <string name="toggle_target_seat_heat_passenger">Подогрев сиденья пассажира</string>
+    <string name="toggle_target_seat_vent_driver">Обдув сиденья водителя</string>
+    <string name="toggle_target_seat_vent_passenger">Обдув сиденья пассажира</string>
+    <string name="toggle_target_steering_heat">Подогрев руля</string>
+    <string name="toggle_state_unknown">%1$s: состояние неизвестно</string>
+    <string name="toggle_trunk_moving">Багажник движется</string>
+    <string name="toggle_unknown_target">Неизвестная цель переключения: %1$s</string>
+    <string name="automation_action_hotspot">Точка доступа Wi-Fi</string>
+    <string name="automation_action_hotspot_on">Включить</string>
+    <string name="automation_action_hotspot_off">Отключить</string>
+    <string name="automation_action_screen_off">Экран: выключить</string>
+    <string name="automation_action_screen_on">Экран: включить</string>
+    <string name="automation_action_speak">Озвучить текст</string>
+    <string name="automation_action_agent_query">Запрос агенту</string>
+    <string name="auto_act_speak">Озвучить текст</string>
+    <string name="auto_act_agent_query">Запрос агенту</string>
+    <string name="automation_speak_text_label">Текст для озвучки</string>
+    <string name="automation_agent_prompt_label">Запрос голосовому агенту</string>
+
+    <!-- Overlay permission dialog -->
+    <string name="automation_overlay_permission_title">Нужно разрешение</string>
+    <string name="automation_overlay_permission_text">Звуковые уведомления показываются как всплывающее окно поверх других приложений. Откройте системные настройки и включите \"Поверх других окон\" для BYDMate.</string>
+    <string name="automation_overlay_open_settings">Открыть настройки</string>
+    <string name="automation_overlay_later">Позже</string>
+
+    <!-- Action controls: preview placeholders -->
+    <string name="automation_tap_to_configure">Нажмите для настройки…</string>
+    <string name="automation_tap_to_pick_app">Нажмите, чтобы выбрать приложение…</string>
+    <string name="automation_tap_to_set_phone">Нажмите, чтобы задать номер…</string>
+    <string name="automation_tap_to_pick_place">Нажмите, чтобы выбрать место…</string>
+    <string name="automation_tap_to_set_url">Нажмите, чтобы задать URL…</string>
+
+    <!-- Notification edit dialog -->
+    <string name="automation_notification_title_label">Заголовок</string>
+    <string name="automation_notification_body_label">Текст (опционально)</string>
+
+    <!-- Call edit dialog -->
+    <string name="automation_call_dialog_title">Позвонить</string>
+    <string name="automation_call_name_label">Имя (необязательно)</string>
+    <string name="automation_call_phone_label">Номер телефона</string>
+    <string name="automation_call_auto_dial_label">Звонить автоматически</string>
+    <string name="automation_call_auto_dial_hint">Без нажатия зелёной кнопки</string>
+
+    <!-- Navigate edit dialog -->
+    <string name="automation_navigate_dialog_title">Маршрут в Я.Навигаторе</string>
+    <string name="automation_navigate_no_places_hint">Сначала добавьте место кнопкой «Места» вверху экрана</string>
+    <string name="automation_navigate_pick_place_placeholder">Выберите место…</string>
+
+    <!-- URL edit dialog -->
+    <string name="automation_url_dialog_title">Открыть URL</string>
+    <string name="automation_url_field_label">URL</string>
+    <string name="automation_url_minimize_label">Свернуть после запуска (через 3 сек)</string>
+
+    <!-- Yandex Music edit dialog -->
+    <string name="automation_music_dialog_title">Яндекс.Музыка</string>
+    <string name="automation_music_what_to_play">Что запустить:</string>
+    <string name="automation_music_my_wave">Моя Волна</string>
+    <string name="automation_music_minimize_label">Свернуть после запуска (через 3 сек)</string>
+
+    <!-- Journal dialog -->
+    <string name="automation_journal_title">Журнал срабатываний</string>
+    <string name="automation_journal_empty">Журнал пуст</string>
+
+    <!-- Journal relative time -->
+
+    <!-- Places screen -->
+    <string name="places_tab_title">Места</string>
+    <string name="places_back_content_description">Назад</string>
+    <string name="places_add_button">+ Добавить</string>
+    <string name="places_empty">Мест пока нет. Нажмите \"+ Добавить\", чтобы создать.</string>
+    <string name="places_row_coords">%1$.5f, %2$.5f · %3$d м</string>
+    <string name="places_row_in_use">используется в %1$d правилах</string>
+    <string name="places_edit_content_description">Редактировать</string>
+    <string name="places_delete_content_description">Удалить</string>
+    <string name="places_delete_blocked_message">Место используется в %1$d автоматизациях. Сначала удалите правила.</string>
+
+    <!-- Place edit dialog -->
+    <string name="place_edit_dialog_title_new">Новое место</string>
+    <string name="place_edit_dialog_title_edit">Редактировать место</string>
+    <string name="place_edit_name_label">Название</string>
+    <string name="place_edit_lat_label">Широта</string>
+    <string name="place_edit_lon_label">Долгота</string>
+    <string name="place_edit_radius_label">Радиус, м</string>
+    <string name="place_edit_error_min_radius">Минимальный радиус 20 м</string>
+
+    <!-- Welcome Wizard -->
+    <string name="welcome_step_indicator">Шаг %1$d из %2$d</string>
+    <string name="welcome_language_title">Язык приложения</string>
+    <string name="welcome_next_button">Далее</string>
+    <string name="welcome_battery_section_title">Батарея</string>
+    <string name="welcome_battery_capacity_hint">Сверьте с паспортом машины. Leopard 3: 72,9 кВт·ч (BEV) или 31,8 кВт·ч (PHEV)</string>
+    <string name="welcome_tariff_section_title">Тарифы</string>
+    <string name="welcome_tariff_home_label">Домашняя зарядка (%1$s/кВт·ч)</string>
+    <string name="welcome_tariff_dc_label">Быстрая зарядка DC (%1$s/кВт·ч)</string>
+    <string name="welcome_autostart_step_title">Автозапуск на DiLink</string>
+    <string name="welcome_autostart_step_description">Чтобы BYDMate запускался автоматически при включении магнитолы:</string>
+    <string name="welcome_autostart_instruction_1">1. Нажмите кнопку справа</string>
+    <string name="welcome_autostart_instruction_2">2. Найдите BYDMate в списке</string>
+    <string name="welcome_autostart_instruction_3">3. Переключатель должен быть ВЫКЛЮЧЕН (OFF)</string>
+    <string name="welcome_autostart_off_note">OFF = автозапуск РАЗРЕШЁН. Это чёрный список: отключённые в нём приложения МОГУТ запускаться сами.</string>
+    <string name="welcome_autostart_apk_update_warning">После обновления APK проверьте эту настройку!</string>
+    <string name="welcome_autostart_dilink_section_title">Альтернатива: через DiLink+ (Di+)</string>
+    <string name="welcome_autostart_dilink_hint">Если автозапуск не сработал, добавьте в Di+:</string>
+    <string name="welcome_autostart_dilink_instruction">Di+ → Predefined → Startup tasks</string>
+    <string name="welcome_autostart_command_copied_toast">Скопировано!</string>
+    <string name="welcome_autostart_command_explanation">打开应用 = «открыть приложение» + имя пакета.\nДля двух приложений через точку с запятой:\n打开应用ru.yandex.yandexnavi;打开应用com.bydmate.app</string>
+    <string name="welcome_system_settings_section_title">Системные настройки</string>
+    <string name="welcome_autostart_open_settings_button">Открыть настройки автозапуска</string>
+    <string name="welcome_autostart_open_settings_error">Не удалось открыть настройки автозапуска DiLink. Открыты настройки приложения.</string>
+    <string name="welcome_loading_default">Загрузка...</string>
+    <string name="welcome_back_button">Назад</string>
+    <string name="welcome_done_button">Запустить BYDMate</string>
+    <string name="welcome_saving_settings_status">Сохранение настроек...</string>
+    <string name="welcome_updating_data_status">Обновление данных...</string>
+    <string name="welcome_importing_trips_status">Импорт поездок...</string>
+
+    <!-- Service & Notifications -->
+    <string name="service_foreground_content_starting">Запуск…</string>
+    <!-- Foreground notification live text. soc_line: %1$s=SOC string, %2$s=range suffix (or empty), %3$s=bat-temp suffix (or empty) -->
+    <string name="service_notification_soc_line">запас: %1$s%2$s%3$s</string>
+    <!-- %1$.0f = range km -->
+    <string name="service_notification_range_suffix"> ~%1$.0f км</string>
+    <!-- %1$d = battery temperature °C -->
+    <string name="service_notification_bat_temp_suffix"> | t°бат: %1$d°C</string>
+    <!-- %1$.1f = 12V voltage -->
+    <string name="service_notification_voltage">борт.сеть: %1$.1f В</string>
+    <!-- Automation confirm notification action buttons -->
+    <string name="service_confirm_action_yes">Выполнить</string>
+    <string name="service_confirm_action_no">Отмена</string>
+
+    <!-- Floating widget -->
+    <string name="widget_unit_km">км</string>
+    <!-- Duration compact formats: hours mode and minutes-only mode -->
+    <string name="widget_duration_hours">%1$dч %2$dм</string>
+    <string name="widget_duration_minutes">%1$d мин</string>
+    <!-- Trip distance value with unit -->
+    <string name="widget_trip_km_value">%1$.1f км</string>
+    <!-- Range per 1% SOC: %.1f km per percent -->
+    <string name="widget_km_per_percent">%1$.1f</string>
+    <!-- Voltage value with unit: %.1f V -->
+    <string name="widget_voltage_value">%1$.1f В</string>
+    <!-- Long-press toast -->
+    <string name="widget_toast_hidden">Виджет скрыт. Откройте BYDMate - вернётся.</string>
+    <string name="widget_button_no_rules">Нет правил для кнопки %1$d</string>
+    <!-- Trash zone labels -->
+    <string name="widget_trash_release">отпустить - виджет скрыт</string>
+    <string name="widget_trash_hint">перетащить сюда, чтобы скрыть</string>
+
+    <!-- Dashboard -->
+    <!-- Top bar -->
+    <string name="dashboard_vehicle_data_offline">Нет данных от автомобиля</string>
+    <string name="dashboard_diplus_offline">DiPlus не отвечает</string>
+    <string name="dashboard_status_online">Online</string>
+    <string name="dashboard_status_offline">Offline</string>
+
+    <!-- Left column - live stats -->
+    <string name="dashboard_unit_km">км</string>
+    <string name="dashboard_unit_kwh">кВт·ч</string>
+    <string name="dashboard_range_label">расчётный пробег</string>
+    <!-- Trip 1/2 dashboard counters -->
+    <string name="dashboard_trip1_label" translatable="false">TRIP 1</string>
+    <string name="dashboard_trip2_label" translatable="false">TRIP 2</string>
+    <string name="dashboard_trip_since">с %1$s · %2$d дн.</string>
+    <string name="dashboard_trip_since_all_time">за всё время</string>
+    <string name="dashboard_trip_count_label">Поездок</string>
+    <string name="dashboard_trip_driving_time_label">Время в пути</string>
+    <string name="dashboard_trip_time_hours_min">%1$d ч %2$d мин</string>
+    <string name="dashboard_trip_time_min">%1$d мин</string>
+    <string name="dashboard_trip_kwh_total_label">Расход всего</string>
+    <string name="dashboard_trip_kwh_driving_label">в движении</string>
+    <string name="dashboard_trip_kwh_idle_label">на стоянке</string>
+    <string name="dashboard_trip_kwh_value">%1$s кВт·ч</string>
+    <string name="dashboard_trip_avg_label">Средний расход</string>
+    <string name="dashboard_trip_avg_value">%1$s кВт·ч/100км</string>
+    <string name="dashboard_trip_cost_label">Стоимость</string>
+    <string name="dashboard_trip_reset_hint">Долгое нажатие на кнопке TRIP сбрасывает счётчик вручную</string>
+    <string name="dashboard_trip_auto_reset_label">Сбрасывать после зарядки</string>
+    <string name="dashboard_trip_auto_reset_off">Нет</string>
+    <string name="dashboard_trip_auto_reset_any">Любой</string>
+    <string name="dashboard_trip_auto_reset_ac" translatable="false">AC</string>
+    <string name="dashboard_trip_auto_reset_dc" translatable="false">DC</string>
+    <string name="dashboard_trip_auto_reset_full">До 100%</string>
+
+    <!-- Battery card -->
+    <string name="dashboard_battery_temp_label">темп. бат.</string>
+    <string name="dashboard_battery_voltage_label">борт. сеть</string>
+
+    <!-- AI Insight card -->
+    <string name="dashboard_insight_no_data">Мало данных для анализа</string>
+    <string name="insight_period_week">Неделя</string>
+    <string name="insight_period_month">Месяц</string>
+
+    <!-- Period chips -->
+    <string name="dashboard_period_day">День</string>
+    <string name="dashboard_period_week">Нед</string>
+    <string name="dashboard_period_month">Мес</string>
+    <string name="dashboard_period_year">Год</string>
+    <string name="dashboard_period_all">Всё</string>
+
+    <!-- Stat cards -->
+    <string name="dashboard_stat_distance">Пробег</string>
+    <string name="dashboard_stat_energy">Энергия</string>
+    <string name="dashboard_stat_consumption">Расход</string>
+    <string name="dashboard_stat_cost">Стоимость</string>
+    <string name="dashboard_trip_count">%1$d поездок</string>
+
+    <!-- Recent trips section -->
+    <string name="dashboard_recent_trips_title">Последние поездки</string>
+    <string name="dashboard_col_time">время</string>
+    <string name="dashboard_col_duration">длит.</string>
+    <string name="dashboard_col_per100">/100</string>
+    <string name="dashboard_empty_no_trips">Поездок пока нет</string>
+
+    <!-- Dashboard: inline format values (stat cards, voltage) -->
+    <!-- %1$.1f = distance km -->
+    <string name="dashboard_stat_km_value">%1$.1f км</string>
+    <!-- %1$.1f = energy kWh -->
+    <string name="dashboard_stat_kwh_value">%1$.1f кВт·ч</string>
+    <!-- %1$.1f = 12V voltage -->
+    <string name="dashboard_voltage_value">%1$.1fВ</string>
+
+    <!-- Navigation bar tab labels -->
+    <string name="nav_tab_dashboard">Главная</string>
+    <string name="nav_tab_trips">Поездки</string>
+    <string name="nav_tab_charges">Зарядки</string>
+    <string name="nav_tab_automation">Автоматизация</string>
+    <string name="nav_tab_settings">Настройки</string>
+
+    <!-- Post-install autostart hint dialog -->
+    <string name="nav_autostart_dialog_title">BYDMate обновлён до v%1$s</string>
+    <string name="nav_autostart_dialog_body">Проверьте, что фоновая работа не заблокирована:\n\nНастройки DiLink - General - Disable background Apps - BYDMate - OFF\n\nЕсли переключатель включён (ON), DiLink может прибить сервис BYDMate - тогда поездки и GPS не будут писаться.</string>
+    <string name="nav_autostart_dialog_button">Понятно</string>
+    <string name="nav_autostart_open_settings_error">Не удалось открыть настройки автозапуска DiLink. Открыты настройки приложения.</string>
+
+    <!-- AppLaunchPicker dialog -->
+    <string name="applauncher_title">Выбор приложения</string>
+    <string name="applauncher_search_label">Поиск</string>
+    <string name="applauncher_minimize_label">Свернуть после запуска (через 3 сек)</string>
+    <string name="applauncher_empty">Ничего не найдено</string>
+    <string name="applauncher_close_button">Закрыть</string>
+
+    <!-- SOC ring: charging icon content description -->
+    <string name="battery_health_charging_cd">Идёт зарядка</string>
+
+    <!-- Battery readings shared by the compact card and the tech panel -->
+    <string name="battery_health_cell_delta_label">Δ ячеек</string>
+    <!-- %1$.3f = delta volts -->
+    <string name="battery_health_cell_delta_value">%1$.3f В</string>
+    <!-- %1$.3f = cell voltage volts -->
+    <string name="battery_health_cell_voltage_value">%1$.3f В</string>
+    <string name="battery_health_bat_temp_label">темп. батареи</string>
+    <string name="battery_health_12v_label">бортовая сеть</string>
+    <!-- %1$.1f = 12V voltage -->
+    <string name="battery_health_12v_value">%1$.1f В</string>
+    <string name="battery_health_bms_mileage_label">пробег BMS</string>
+    <!-- %1$.1f = mileage km -->
+    <string name="battery_health_bms_mileage_value">%1$.1f км</string>
+    <string name="battery_health_pumped_label">прокачано</string>
+    <!-- %1$.0f = kWh -->
+    <string name="battery_health_pumped_value">%1$.0f кВт·ч</string>
+    <string name="battery_health_avg_since_charge_label">с последней зарядки</string>
+    <string name="battery_health_avg_all_time_label">за всё время</string>
+    <string name="battery_health_avg_soc_hint" formatted="false">Средневзвешенный уровень заряда: чем дольше батарея стоит заряженной, тем выше значение. Для LFP-батареи BYD полезно держать его пониже: хранение на высоком заряде ускоряет старение. Ориентир: до 65% отлично, 65-85% нормально, выше 85% лучше заряжать позже или реже. Заряд до 100% раз в 1-2 недели всё равно нужен для балансировки ячеек. Считается по истории поездок и зарядок BYDMate.</string>
+
+    <!-- Shared summary row (Components.kt SummaryRow) -->
+    <string name="summary_unit_km">км</string>
+    <string name="summary_label_mileage">Пробег</string>
+    <string name="summary_unit_kwh">кВт·ч</string>
+    <string name="summary_label_energy">Энергия</string>
+    <string name="summary_unit_kwh_per_100km">кВт·ч/100км</string>
+    <string name="summary_label_consumption">Расход</string>
+    <string name="summary_label_cost">Стоимость</string>
+
+    <!-- Settings: unit chips and language labels -->
+    <string name="settings_tariff_trip_custom_chip">Свой</string>
+    <string name="settings_unit_km">км</string>
+    <string name="settings_unit_miles">мили</string>
+    <!-- Language names shown in language picker (intentionally NOT translated - native name) -->
+
+    <!-- Settings: ViewModel status strings (user-visible feedback) -->
+    <string name="settings_saved">Сохранено</string>
+    <!-- %1$d = trip count -->
+    <string name="settings_recalc_done">Пересчитано: %1$d поездок</string>
+    <string name="settings_export_in_progress">Экспорт...</string>
+    <!-- %1$d = trip count, %2$d = charge count, %3$d = track point count, %4$d = idle drain count -->
+    <!-- Generic error with message: %1$s = error text -->
+    <string name="settings_error_with_message">Ошибка: %1$s</string>
+    <!-- Error prefix used for color detection in UI (must match start of settings_error_with_message) -->
+    <string name="settings_error_prefix">Ошибка</string>
+    <!-- %1$s = file path -->
+    <string name="settings_log_recording_started">Запись (авто-стоп через 2ч)... - %1$s</string>
+    <!-- %1$s = file path, %2$d = size KB -->
+    <string name="settings_log_saved">Сохранено: %1$s (%2$d КБ)</string>
+    <string name="settings_log_error_no_fs_access">Ошибка: нет доступа к файловой системе</string>
+    <string name="settings_log_tg_send">Отправить в Telegram</string>
+    <string name="settings_log_tg_sending">Отправляю в Telegram…</string>
+    <string name="settings_log_tg_sent">Файл отправлен в Telegram</string>
+    <string name="settings_log_tg_failed">Не удалось отправить: %1$s</string>
+    <string name="settings_log_tg_too_big">Файл слишком большой для Telegram. Он лежит в папке Download.</string>
+    <string name="settings_log_tg_missing">Файл не найден. Возможно, его удалили из папки Download.</string>
+    <string name="settings_tg_log_auto_title">Отправлять записанный лог в Telegram</string>
+    <string name="settings_tg_log_auto_hint">Когда запись лога закончится, файл сам придёт в ваш бот.</string>
+    <string name="settings_update_check_in_progress">Проверка...</string>
+    <!-- %1$s = version string -->
+    <string name="settings_update_available_short">Доступна v%1$s</string>
+
+    <!-- UpdateChecker: download progress strings (passed via callback) -->
+    <string name="update_downloading_progress">Скачивание: %1$d%%</string>
+    <string name="update_downloading_done">Скачано. Установка...</string>
+    <string name="update_downloading_paused">Пауза...</string>
+    <!-- %1$d = DownloadManager error code -->
+    <string name="update_download_error">Ошибка скачивания (код %1$d)</string>
+    <string name="update_download_notification_description">Обновление BYDMate</string>
+    <!-- Initial 0% progress string -->
+    <string name="update_downloading_start" formatted="false">Скачивание: 0%</string>
+
+    <!-- Charges: day group labels -->
+    <!-- %1$s = day-of-week abbreviation -->
+    <string name="charges_day_today">сегодня (%1$s)</string>
+    <string name="charges_day_yesterday">вчера</string>
+
+    <!-- Common duration formats -->
+    <string name="common_duration_hours_minutes">%1$d ч %2$d мин</string>
+    <string name="common_duration_minutes">%1$d мин</string>
+
+    <!-- Automation confirm overlay buttons -->
+    <string name="confirm_overlay_cancel">Отмена</string>
+    <string name="confirm_overlay_run">Выполнить</string>
+
+    <!-- AI insight dynamic metric labels -->
+    <string name="insight_metric_consumption">Расход</string>
+    <string name="insight_metric_trips">Поездки</string>
+    <string name="insight_metric_short_trips">Короткие &lt; 5 км</string>
+    <string name="insight_metric_avg_distance">Ср. дистанция</string>
+    <string name="insight_metric_idle">Стоянка</string>
+    <string name="insight_section_week_to_week">Неделя к неделе</string>
+    <string name="insight_section_month_to_month">Месяц к месяцу</string>
+    <string name="insight_unit_kwh_per_100">%.1f кВтч/100</string>
+    <string name="insight_unit_kwh_per_100_prev">%.1f</string>
+    <string name="insight_trips_value">%1$d · %2$s км</string>
+    <string name="insight_trips_prev">%1$d · %2$s км</string>
+    <string name="insight_short_value">%1$d%% (%2$d/%3$d)</string>
+    <string name="insight_short_prev">%1$d%%</string>
+    <string name="insight_avg_distance_value">%1$s км</string>
+    <string name="insight_idle_value">%1$s кВтч · %2$s</string>
+    <string name="insight_idle_prev">%1$s кВтч</string>
+    <string name="insight_idle_minutes">%1$s мин</string>
+    <string name="insight_idle_hours">%1$s ч</string>
+    <string name="insight_metric_night_idle">Ночь 22:00–06:00</string>
+    <string name="insight_night_idle_value">%1$.1f кВт·ч · %2$d%% простоя</string>
+    <string name="insight_night_idle_prev">%1$.1f кВт·ч</string>
+
+    <!-- Local insight engine (offline rules) -->
+    <string name="local_insight_not_enough_data_title">Данных мало для анализа</string>
+    <string name="local_insight_not_enough_data_summary">Нужно минимум 5 поездок за неделю</string>
+    <string name="local_insight_consumption_up_title">Расход ▲%1$.0f%% за неделю</string>
+    <string name="local_insight_consumption_up_title_month">Расход ▲%1$.0f%% за месяц</string>
+    <string name="local_insight_consumption_up_summary_short">Много коротких поездок — прогрев забирает энергию</string>
+    <string name="local_insight_consumption_up_summary">Расход вырос: %1$.1f → %2$.1f кВт·ч/100</string>
+    <string name="local_insight_consumption_down_title">Расход ▼%1$.0f%%</string>
+    <string name="local_insight_consumption_down_summary">Средний %1$.1f кВт·ч/100 — экономнее прошлой недели</string>
+    <string name="local_insight_consumption_down_summary_month">Средний %1$.1f кВт·ч/100, экономнее прошлого месяца</string>
+    <string name="local_insight_consumption_stable_title">Расход стабилен</string>
+    <string name="local_insight_consumption_stable_summary">Средний %1$.1f кВт·ч/100 за неделю</string>
+    <string name="local_insight_consumption_stable_summary_month">Средний %1$.1f кВт·ч/100 за месяц</string>
+    <string name="local_insight_short_trips">%1$d из %2$d поездок короче 5 км (%3$d%%) — объединяйте короткие заезды</string>
+    <string name="local_insight_idle">На стоянке с мотором: %1$.1f кВт·ч за %2$s — %3$d%% недельного расхода</string>
+    <string name="local_insight_idle_month">На стоянке с мотором: %1$.1f кВт·ч за %2$s, %3$d%% месячного расхода</string>
+    <string name="local_insight_12v_critical_title">12V критично низкий</string>
+    <string name="local_insight_12v_critical_summary">Бортовая сеть %1$.1f В — проверьте аккумулятор</string>
+    <string name="local_insight_12v_low">12V сейчас %1$.1f В — ниже нормы 12.4 В</string>
+    <string name="local_insight_12v_falling">12V снижается: %1$.2f → %2$.2f В за неделю</string>
+    <string name="local_insight_12v_falling_month">12V снижается: %1$.2f → %2$.2f В за месяц</string>
+    <string name="local_insight_cell_critical_title">Большой разброс банок</string>
+    <string name="local_insight_cell_critical_summary">Дельта %1$.0f мВ — следите за балансировкой</string>
+    <string name="local_insight_cell_delta">Разброс банок %1$.0f мВ — возможна слабая ячейка</string>
+    <string name="local_insight_cold">При %1$d°C средний расход %2$.1f кВт·ч/100 — зимой это ожидаемо</string>
+    <string name="local_insight_best_worst">Лучшая поездка %1$.1f, худшая %2$.1f кВт·ч/100</string>
+    <string name="local_insight_cost">За неделю %1$.0f %2$s на поездки</string>
+    <string name="local_insight_cost_month">За месяц %1$.0f %2$s на поездки</string>
+    <string name="local_insight_night_idle_title">Ночной расход на стоянке</string>
+    <string name="local_insight_night_idle_summary">%1$.1f кВт·ч ночью — %2$d%% простоя с мотором</string>
+    <string name="local_insight_night_idle">Ночью (22:00–06:00) с мотором ушло %1$.1f кВт·ч — %2$d%% всего простоя. Выключайте зажигание, если климат не нужен</string>
+    <string name="local_insight_dc_more_expensive">DC %1$.2f %4$s/кВт·ч vs AC %2$.2f — на %3$d%% дороже домашней зарядки</string>
+    <string name="local_insight_dc_heavy">DC %1$.0f кВт·ч (%2$d сессий) vs AC %3$.0f — для ежедневных поездок домашняя AC мягче для батареи</string>
+    <string name="local_insight_ac_only">Все %2$d зарядки AC (%1$.0f кВт·ч) — оптимально для батареи и бюджета</string>
+    <string name="local_insight_ac_only_month">Все %2$d зарядки AC за месяц (%1$.0f кВт·ч), оптимально для батареи и бюджета</string>
+    <string name="local_insight_charge_cost_week">Зарядки за неделю: %1$.0f %2$s за %3$.0f кВт·ч</string>
+    <string name="local_insight_charge_cost_month">Зарядки за месяц: %1$.0f %2$s за %3$.0f кВт·ч</string>
+    <string name="local_insight_consumption_improved">Расход снизился на %1$.0f%% — хорошая динамика</string>
+    <string name="local_insight_highway_speed">Средняя скорость %1$.0f км/ч — на трассе расход %2$.1f кВт·ч/100, это ожидаемо</string>
+    <string name="local_insight_high_consumption">Средний расход %1$.1f кВт·ч/100 высокий — проверьте климат и стиль вождения</string>
+    <string name="local_insight_low_consumption">Отличный расход %1$.1f кВт·ч/100 за %2$.0f км за неделю</string>
+    <string name="local_insight_low_consumption_month">Отличный расход %1$.1f кВт·ч/100 за %2$.0f км за месяц</string>
+    <string name="local_insight_idle_rate_high">Высокий расход на стоянке ~%1$.1f кВт·ч/ч — скорее всего климат или обогрев</string>
+    <string name="local_insight_km_up">Пробег вырос: %1$.0f → %2$.0f км — это может объяснять изменение среднего расхода</string>
+    <string name="local_insight_trips_more">Поездок стало больше: %1$d vs %2$d на прошлой неделе</string>
+    <string name="local_insight_trips_more_month">Поездок стало больше: %1$d vs %2$d за прошлый месяц</string>
+    <string name="local_insight_weekly_mileage">За неделю %1$.0f км в %2$d поездках — достаточно данных для точной оценки</string>
+    <string name="local_insight_monthly_mileage">За месяц %1$.0f км в %2$d поездках, достаточно данных для точной оценки</string>
+    <string name="local_insight_12v_ok">12V %1$.1f В — бортовая сеть в норме</string>
+    <string name="local_insight_cell_ok">Разброс банок %1$.0f мВ — баланс в норме</string>
+    <string name="local_insight_heat_ac">При +%1$d°C расход %2$.1f кВт·ч/100 — кондиционер добавляет нагрузку</string>
+    <string name="local_insight_best_trip">Лучшая поездка %1$.1f кВт·ч/100 на %2$.0f км — удачный режим вождения</string>
+    <string name="local_insight_mixed_charging">Зарядка за неделю: AC %1$.0f кВт·ч, DC %2$.0f кВт·ч — для батареи чаще заряжайтесь дома</string>
+    <string name="local_insight_mixed_charging_month">Зарядка за месяц: AC %1$.0f кВт·ч, DC %2$.0f кВт·ч, для батареи чаще заряжайтесь дома</string>
+    <string name="local_insight_low_night_idle">Ночной простой всего %1$d%% — хорошая привычка глушить мотор</string>
+    <string name="local_insight_low_idle_share">Простой с мотором — всего %1$d%% недельного расхода, это хорошо</string>
+    <string name="local_insight_low_idle_share_month">Простой с мотором, всего %1$d%% месячного расхода, это хорошо</string>
+    <string name="local_insight_cost_per_100">Стоимость пробега ~%1$.2f %3$s/100 км (%2$.0f %3$s за неделю)</string>
+    <string name="local_insight_cost_per_100_month">Стоимость пробега ~%1$.2f %3$s/100 км (%2$.0f %3$s за месяц)</string>
+
+    <!-- Config backup / restore -->
+    <string name="settings_config_restore_button">Восстановить конфигурацию</string>
+    <!-- %1$s = full file path -->
+    <string name="settings_config_restore_confirm_ok">Восстановить</string>
+    <string name="settings_config_restore_confirm_cancel">Отмена</string>
+    <string name="settings_config_restore_pick_title">Выберите файл бэкапа</string>
+    <string name="settings_config_restore_pick_empty">Файлов экспорта в Download не найдено</string>
+    <!-- Automatic backup + Telegram bot (#237) -->
+    <string name="settings_auto_backup_title">Автосохранение</string>
+    <string name="settings_auto_backup_desc">При запуске машины. В Download хранятся 5 последних копий</string>
+    <string name="settings_auto_backup_off">Выкл</string>
+    <string name="settings_auto_backup_daily">Ежедневно</string>
+    <string name="settings_auto_backup_weekly">Еженедельно</string>
+    <string name="settings_auto_backup_monthly">Ежемесячно</string>
+    <string name="settings_auto_backup_never">Ещё не делалось</string>
+    <string name="settings_auto_backup_last">Последнее: %1$s · %2$s</string>
+    <string name="settings_tg_backup_title">Telegram-бот</string>
+    <string name="settings_tg_backup_token_label">Токен бота</string>
+    <string name="settings_tg_backup_check">Проверить</string>
+    <string name="settings_tg_backup_disconnect">Отключить</string>
+    <string name="settings_tg_backup_hint">Создайте бота в @BotFather, вставьте его токен и нажмите «Проверить». Архив не зашифрован, бот и чат должны быть только вашими.</string>
+    <string name="settings_tg_backup_checking">Проверяю…</string>
+    <string name="settings_tg_backup_greeting">BYDMate подключён. Сюда будут приходить бэкапы.</string>
+    <string name="settings_backup_share">Поделиться</string>
+    <string name="settings_backup_close">Закрыть</string>
+    <string name="settings_backup_share_hint">В архиве ключи и история поездок, делитесь только с тем, кому доверяете.</string>
+    <string name="settings_config_save_sent">Отправлено в Telegram</string>
+    <string name="settings_config_save_send_failed">Не удалось отправить в Telegram: %1$s</string>
+    <string name="settings_config_header">Конфигурация</string>
+    <string name="settings_diagnostics_header">Диагностика</string>
+    <string name="settings_config_save_title">Сохранить конфигурацию</string>
+    <string name="settings_config_save_desc">История поездок и зарядок, настройки, автоматизации и места. Файл в папке Download; если подключён Telegram-бот, копия уходит и туда.</string>
+    <string name="settings_config_save_button">Сохранить</string>
+    <string name="settings_config_restore_pick_button">Выбрать файл</string>
+    <string name="settings_config_save_dialog_title">Что сохранить</string>
+    <string name="settings_config_restore_dialog_title">Что восстановить</string>
+    <string name="settings_backup_part_tables">Таблицы</string>
+    <string name="settings_backup_part_tables_desc">Поездки, зарядки, статистика</string>
+    <string name="settings_backup_part_settings">Настройки машины и приложения</string>
+    <string name="settings_backup_part_settings_desc">Настройки, тарифы, автоматизации, места, виджет, голос</string>
+    <string name="settings_backup_part_keys">Ключи и токены</string>
+    <string name="settings_backup_part_keys_desc">OpenRouter, ABRP, Telegram-бот. Снимите, если отдаёте файл другому человеку.</string>
+    <string name="settings_backup_part_absent">В архиве нет</string>
+    <string name="backup_error_newer_archive">Бэкап создан более новой версией приложения (схема %1$d, текущая %2$d). Обновите приложение перед восстановлением.</string>
+    <string name="backup_error_not_bydmate_db">Файл базы данных в бэкапе не является базой BYDMate</string>
+    <string name="backup_error_merge_integrity">База после слияния с бэкапом не прошла проверку целостности</string>
+    <string name="backup_error_export_integrity">Снимок базы для экспорта не прошёл проверку целостности</string>
+    <string name="backup_error_parts_mismatch">Файл бэкапа повреждён: состав архива не совпадает с его описанием</string>
+    <string name="backup_error_no_selected_parts">В архиве нет выбранных частей</string>
+    <string name="backup_error_fk_violation">Файл бэкапа повреждён: нарушены связи между таблицами</string>
+    <string name="backup_error_version_mismatch">Файл бэкапа повреждён: версия базы не совпадает с описанием</string>
+    <string name="backup_error_db_not_sqlite">Файл базы данных в бэкапе повреждён или не является базой SQLite</string>
+    <string name="backup_error_db_integrity">Файл базы данных в бэкапе не прошёл проверку целостности</string>
+    <string name="backup_error_too_many_entries">Файл бэкапа повреждён: слишком много записей в архиве</string>
+    <string name="backup_error_duplicate_entry">Файл бэкапа повреждён: дублирующаяся запись %1$s</string>
+    <string name="backup_error_too_large">Файл бэкапа слишком большой</string>
+    <string name="backup_error_incomplete">Файл бэкапа повреждён или неполный. Ожидались записи: %1$s</string>
+    <string name="backup_error_entry_too_large">Файл бэкапа повреждён: запись превышает допустимый размер</string>
+    <string name="backup_error_export_busy">База данных занята, экспорт прерван. Повторите попытку позже.</string>
+    <string name="backup_error_open_failed">Не удалось открыть файл бэкапа</string>
+    <string name="backup_error_swap_failed">Не удалось заменить файл базы данных при восстановлении</string>
+    <string name="settings_backup_chip_tables">Таблицы</string>
+    <string name="settings_backup_chip_settings">Настройки</string>
+    <string name="settings_backup_chip_keys">Ключи</string>
+    <string name="settings_auto_backup_parts_label">Что попадает в автоматическую копию</string>
+    <string name="settings_config_restore_warning">Текущие данные будут заменены. Приложение перезапустится.</string>
+    <string name="settings_config_saved_title">Сохранено</string>
+    <string name="settings_config_saved_file">%1$s, %2$s МБ</string>
+    <string name="settings_tg_backup_step_token">Токен</string>
+    <string name="settings_tg_backup_step_code">Код</string>
+    <string name="settings_tg_backup_step_done">Готово</string>
+    <string name="settings_tg_backup_code_instruction">Отправьте этот код боту @%1$s в личный чат или добавьте бота в свою группу и напишите там /start@%1$s и код через пробел. Затем нажмите «Проверить».</string>
+    <string name="settings_tg_backup_copy_code">Скопировать код</string>
+    <string name="settings_tg_backup_code_copied">Код скопирован</string>
+    <string name="settings_tg_backup_code_not_received">Код ещё не пришёл. Отправьте его боту и нажмите «Проверить» снова.</string>
+    <string name="settings_tg_backup_connected_chip">Подключён</string>
+    <string name="settings_tg_backup_chat_line">@%1$s, %2$s</string>
+    <string name="settings_tg_backup_connected_note">Сюда приходят копии и отчёты.</string>
+    <string name="settings_tg_backup_back">Назад</string>
+    <string name="settings_log_recording_help">Подробный журнал работы приложения. Нужен, только когда разработчик просит лог для разбора проблемы. Включите, повторите проблему, остановите запись и отправьте файл из папки Download.</string>
+    <string name="settings_fid_recorder_help">Записывает все изменения датчиков машины в файл в Download. Нужен, чтобы найти сигнал для новой функции: включите, нажмите нужную кнопку в машине, выключите и отправьте файл разработчику.</string>
+    <string name="settings_fid_dump_help">Список сигналов, которые знает прошивка вашей машины, без VIN и личных данных. Нужен разработчику, чтобы поддержать новую модель или найти неработающую функцию.</string>
+    <string name="settings_auto_backup_result_sent">отправлено в Telegram</string>
+    <string name="settings_auto_backup_result_local_only">сохранено локально, Telegram не настроен</string>
+    <string name="settings_auto_backup_result_send_error">ошибка отправки: %1$s</string>
+    <string name="settings_auto_backup_result_export_error">ошибка экспорта</string>
+    <string name="settings_tg_error_bad_token">неверный токен</string>
+    <string name="settings_tg_error_no_network">нет сети</string>
+    <string name="settings_tg_error_no_chat">напишите боту любое сообщение</string>
+    <string name="settings_tg_error_too_large">файл больше 50 МБ</string>
+    <string name="settings_tg_error_webhook">конфликт getUpdates: отключите вебхук или другой клиент бота</string>
+    <string name="settings_tg_error_bad_response">непонятный ответ Telegram</string>
+    <string name="settings_tg_error_http">ошибка Telegram %1$s</string>
+    <!-- Fid catalog dump (Task O) -->
+    <string name="settings_fid_dump_button">Сохранить каталог fid\'ов</string>
+    <string name="settings_fid_dump_desc">Имена и значения констант SDK. Только технические идентификаторы: без VIN, без геолокации, без личных данных</string>
+    <string name="settings_hud_check_title">Проверка HUD</string>
+    <string name="settings_hud_check_desc">Полторы минуты тестовых подсказок на стекле. Машина стоит, маршрут в навигаторе завершён. Сначала включите запись логов. На стекле по очереди появятся числа 111, 222, 333 и 444. В конце приложение спросит, что вы видели, и само выберет способ. После проверки всё пропадёт</string>
+    <string name="settings_hud_check_button">Запустить</string>
+    <string name="settings_hud_check_preparing">Готовим проверку</string>
+    <string name="settings_hud_check_step">Шаг %1$d из %2$d, смотрите на стекло</string>
+    <string name="settings_hud_check_restoring">Завершаем проверку</string>
+    <string name="settings_hud_check_done">Готово, запишите логи и пришлите их вместе с видео стекла</string>
+    <string name="settings_hud_check_route_started">Проверка прервана: начался маршрут</string>
+    <string name="settings_hud_check_refused_guidance">Сначала завершите маршрут в навигаторе</string>
+    <string name="settings_hud_check_refused_moving">Остановите машину, проверка идёт только на месте</string>
+    <string name="settings_hud_check_refused_no_link">Нет связи с машиной, проверка не запущена</string>
+    <string name="settings_hud_check_notice_refused_title">Проверка не запущена</string>
+    <string name="settings_hud_check_notice_interrupted_title">Проверка прервана</string>
+    <string name="settings_hud_check_notice_guidance">В навигаторе идёт маршрут. Завершите его и запустите проверку ещё раз.</string>
+    <string name="settings_hud_check_notice_moving">Машина едет. Остановитесь и запустите проверку ещё раз.</string>
+    <string name="settings_hud_check_notice_route_started">Во время проверки начался маршрут. Завершите его и запустите проверку ещё раз.</string>
+    <string name="settings_hud_check_notice_ok">Понятно</string>
+    <!-- %1$s = file name -->
+    <string name="settings_fid_dump_saved">Сохранено: %1$s</string>
+    <string name="settings_fid_dump_in_progress">Чтение fid\'ов...</string>
+    <string name="settings_fid_dump_empty">Каталог fid\'ов пуст на этой прошивке</string>
+    <string name="settings_fid_dump_error_unavailable">демон недоступен</string>
+    <!-- %1$s = short technical detail, e.g. "status=-1 at chunk 0" or "transact failed at chunk 2" -->
+    <string name="settings_fid_dump_error_read">ошибка чтения: %1$s</string>
+    <!-- ==== Automation i18n (systematized) ==== -->
+    <!-- categories -->
+    <string name="auto_cat_body">Кузов</string>
+    <string name="auto_cat_climate">Климат</string>
+    <string name="auto_cat_driving">Движение</string>
+    <string name="auto_cat_energy">Энергия</string>
+    <string name="auto_cat_fridge">Холодильник</string>
+    <string name="auto_cat_light">Свет</string>
+    <string name="auto_cat_locks">Замки</string>
+    <string name="auto_cat_mirrors">Зеркала</string>
+    <string name="auto_cat_safety">Безопасность</string>
+    <string name="auto_cat_seats">Сиденья</string>
+    <string name="auto_cat_sunroof">Люк</string>
+    <string name="auto_cat_temperature">Температура</string>
+    <string name="auto_cat_windows">Окна</string>
+    <!-- units -->
+    <string name="auto_unit_celsius">°C</string>
+    <string name="auto_unit_dry_hint">(0=сухо)</string>
+    <string name="auto_unit_light_hint">(1=темно, 5=ярко)</string>
+    <string name="auto_unit_key_ok_hint">(0=в норме)</string>
+    <string name="auto_unit_kmh">км/ч</string>
+    <string name="auto_unit_kpa">кПа</string>
+    <string name="auto_unit_percent">%</string>
+    <string name="auto_unit_percent_open" formatted="false">% откр.</string>
+    <string name="auto_unit_volt">В</string>
+    <!-- enum labels -->
+    <string name="auto_enum_charging">Заряжается</string>
+    <string name="auto_enum_closed_f">Закрыта</string>
+    <string name="auto_enum_closed_m">Закрыт</string>
+    <string name="auto_enum_code_d">D</string>
+    <string name="auto_enum_code_eco">ECO</string>
+    <string name="auto_enum_code_n">N</string>
+    <string name="auto_enum_code_normal">NORMAL</string>
+    <string name="auto_enum_code_p">P</string>
+    <string name="auto_enum_code_r">R</string>
+    <string name="auto_enum_code_snow">Снег</string>
+    <string name="auto_enum_code_sport">SPORT</string>
+    <string name="auto_enum_connected">Подключён</string>
+    <string name="auto_enum_fastened">Пристёгнут</string>
+    <string name="auto_enum_seat_free">Свободно</string>
+    <string name="auto_enum_seat_occupied">Занято</string>
+    <string name="auto_enum_fresh_air">Внешний воздух</string>
+    <string name="auto_enum_locked">Заблокирован</string>
+    <string name="auto_enum_none">Нет</string>
+    <string name="auto_enum_off">Выкл</string>
+    <string name="auto_enum_on">Вкл</string>
+    <string name="auto_enum_open_f">Открыта</string>
+    <string name="auto_enum_open_m">Открыт</string>
+    <string name="auto_enum_recirc">Внутренний воздух</string>
+    <string name="auto_enum_turn_off">Выключен</string>
+    <string name="auto_enum_turn_left">Левый</string>
+    <string name="auto_enum_turn_right">Правый</string>
+    <string name="auto_enum_turn_hazard">Аварийка</string>
+    <string name="auto_enum_unfastened">Не пристёгнут</string>
+    <string name="auto_enum_unlocked">Разблокирован</string>
+    <!-- trigger param names -->
+    <string name="auto_param_speed">Скорость</string>
+    <string name="auto_param_gear">Передача</string>
+    <string name="auto_param_drivemode">Режим вождения</string>
+    <string name="auto_param_soc">SOC</string>
+    <string name="auto_param_chargingstatus">Статус зарядки</string>
+    <string name="auto_param_voltage12v">12V аккумулятор</string>
+    <string name="auto_param_mincellvoltage">Мин. напряжение ячейки</string>
+    <string name="auto_param_maxcellvoltage">Макс. напряжение ячейки</string>
+    <string name="auto_param_exttemp">Температура снаружи</string>
+    <string name="auto_param_insidetemp">Темп. салона</string>
+    <string name="auto_param_avgbattemp">Темп. батареи</string>
+    <string name="auto_param_windowfl">Окно водителя</string>
+    <string name="auto_param_windowfr">Окно пассажира</string>
+    <string name="auto_param_windowrl">Окно сзади слева</string>
+    <string name="auto_param_windowrr">Окно сзади справа</string>
+    <string name="auto_param_sunroof">Люк</string>
+    <string name="auto_param_doorfl">Дверь водителя</string>
+    <string name="auto_param_doorfr">Дверь пассажира</string>
+    <string name="auto_param_doorrl">Дверь сзади слева</string>
+    <string name="auto_param_doorrr">Дверь сзади справа</string>
+    <string name="auto_param_hood">Капот</string>
+    <string name="auto_param_lockfl">Замок двери водителя</string>
+    <string name="auto_param_trunk">Багажник</string>
+    <string name="auto_param_acstatus">Кондиционер</string>
+    <string name="auto_param_accirc">Режим циркуляции</string>
+    <string name="auto_param_actemp">Темп. AC</string>
+    <string name="auto_param_fanlevel">Вентилятор</string>
+    <string name="auto_param_seatbeltfl">Ремень водителя</string>
+    <string name="auto_param_seatbeltfr">Ремень пассажира</string>
+    <string name="auto_param_occupancyfl">Место водителя</string>
+    <string name="auto_param_occupancyfr">Место переднего пассажира</string>
+    <string name="auto_param_occupancyrl">Место сзади слева</string>
+    <string name="auto_param_occupancyrm">Место сзади в центре</string>
+    <string name="auto_param_occupancyrr">Место сзади справа</string>
+    <string name="auto_param_lightlevel">Освещённость</string>
+    <string name="auto_param_keybattery">Батарейка ключа</string>
+    <string name="auto_param_tirepressfl">Давление левой передней шины</string>
+    <string name="auto_param_tirepressfr">Давление правой передней шины</string>
+    <string name="auto_param_tirepressrl">Давление левой задней шины</string>
+    <string name="auto_param_tirepressrr">Давление правой задней шины</string>
+    <string name="auto_param_rain">Датчик дождя</string>
+    <string name="auto_param_lightlow">Ближний свет</string>
+    <string name="auto_param_drl">Дневные ходовые</string>
+    <string name="auto_param_turnsignal">Поворотник</string>
+    <!-- action names -->
+    <string name="auto_act_vent_windows">Проветривание</string>
+    <string name="auto_act_close_all_windows">Закрыть все окна</string>
+    <string name="auto_act_open_all_windows">Открыть все окна</string>
+    <string name="auto_act_all_windows_50">Все окна на 50%</string>
+    <string name="auto_act_close_front_windows">Закрыть передние</string>
+    <string name="auto_act_close_rear_windows">Закрыть задние</string>
+    <string name="auto_act_open_front_windows">Открыть передние</string>
+    <string name="auto_act_open_rear_windows">Открыть задние</string>
+    <string name="auto_act_open_driver_window">Открыть окно водителя</string>
+    <string name="auto_act_close_driver_window">Закрыть окно водителя</string>
+    <string name="auto_act_open_passenger_window">Открыть окно пассажира</string>
+    <string name="auto_act_close_passenger_window">Закрыть окно пассажира</string>
+    <string name="auto_act_open_rear_left_window">Открыть заднее левое окно</string>
+    <string name="auto_act_close_rear_left_window">Закрыть заднее левое окно</string>
+    <string name="auto_act_open_rear_right_window">Открыть заднее правое окно</string>
+    <string name="auto_act_close_rear_right_window">Закрыть заднее правое окно</string>
+    <string name="auto_act_vent_driver_window">Проветрить окно водителя</string>
+    <string name="auto_act_vent_passenger_window">Проветрить окно пассажира</string>
+    <string name="auto_act_vent_rear_left_window">Проветрить заднее левое окно</string>
+    <string name="auto_act_vent_rear_right_window">Проветрить заднее правое окно</string>
+    <string name="auto_act_half_driver_window">Окно водителя на 50%</string>
+    <string name="auto_act_half_passenger_window">Окно пассажира на 50%</string>
+    <string name="auto_act_half_rear_left_window">Заднее левое окно на 50%</string>
+    <string name="auto_act_half_rear_right_window">Заднее правое окно на 50%</string>
+    <string name="auto_act_half_front_windows">Передние на 50%</string>
+    <string name="auto_act_vent_front_windows">Проветрить передние</string>
+    <string name="auto_act_half_rear_windows">Задние на 50%</string>
+    <string name="auto_act_vent_rear_windows">Проветрить задние</string>
+    <string name="auto_act_auto_ac">Авто AC</string>
+    <string name="auto_act_ventilation_no_ac">Обдув без AC</string>
+    <string name="auto_act_wind_face">Обдув: в лицо</string>
+    <string name="auto_act_wind_face_feet">Обдув: лицо и ноги</string>
+    <string name="auto_act_wind_feet">Обдув: в ноги</string>
+    <string name="auto_act_wind_feet_windshield">Обдув: ноги и стекло</string>
+    <string name="auto_act_wind_windshield">Обдув: на стекло</string>
+    <string name="auto_act_recirculation">Циркуляция внутр.</string>
+    <string name="auto_act_fresh_air">Циркуляция внешн.</string>
+    <string name="auto_act_windshield_defog_on">Обдув лобового вкл</string>
+    <string name="auto_act_windshield_defog_off">Обдув лобового выкл</string>
+    <string name="auto_act_ac_off">Выключить климат</string>
+    <string name="auto_act_ac_auto_on">Климат: авторежим</string>
+    <string name="auto_act_ac_auto_off">Климат: ручной режим</string>
+    <string name="auto_act_mirror_heat_on">Подогрев зеркал вкл</string>
+    <string name="auto_act_mirror_heat_off">Подогрев зеркал выкл</string>
+    <string name="auto_act_steering_heat_on">Подогрев руля вкл</string>
+    <string name="auto_act_steering_heat_off">Подогрев руля выкл</string>
+    <string name="steering_heat_not_equipped">На этой машине нет подогрева руля</string>
+    <string name="auto_act_hud_on">HUD: включить</string>
+    <string name="auto_act_hud_off">HUD: выключить</string>
+    <string name="hud_not_equipped">На этой машине нет HUD</string>
+    <string name="auto_act_battery_preheat_on">Подогрев батареи: включить</string>
+    <string name="auto_act_battery_preheat_off">Подогрев батареи: выключить</string>
+    <string name="battery_preheat_not_equipped">На этой машине нет подогрева батареи</string>
+    <string name="battery_preheat_not_needed">Машина сообщает, что подогрев батареи сейчас не нужен</string>
+    <string name="battery_preheat_gun_connected">Подогрев батареи недоступен, пока подключён зарядный кабель</string>
+    <string name="auto_act_ambient_light_on">Амбиент вкл</string>
+    <string name="auto_act_ambient_light_off">Амбиент выкл</string>
+    <string name="auto_act_drl_on">ДХО вкл</string>
+    <string name="auto_act_drl_off">ДХО выкл</string>
+    <string name="auto_act_hazard_on">Аварийка: включить</string>
+    <string name="auto_act_hazard_off">Аварийка: выключить</string>
+    <string name="auto_act_interior_light_on">Салонный свет вкл</string>
+    <string name="auto_act_interior_light_off">Салонный свет выкл</string>
+    <string name="auto_act_lock_doors">Заблокировать</string>
+    <string name="auto_act_unlock_doors">Разблокировать</string>
+    <string name="auto_act_sunroof_open_100">Люк открыть 100%</string>
+    <string name="auto_act_sunroof_open_50">Люк открыть 50%</string>
+    <string name="auto_act_sunroof_close">Люк закрыть</string>
+    <string name="auto_act_sunshade_open">Шторка открыть</string>
+    <string name="auto_act_sunshade_close">Шторка закрыть</string>
+    <string name="auto_act_sunroof_stop">Люк остановить</string>
+    <string name="auto_act_sunroof_updip">Люк наклон</string>
+    <string name="auto_act_sunroof_comfort">Люк комфорт</string>
+    <string name="auto_act_open_trunk">Открыть багажник</string>
+    <string name="auto_act_close_trunk">Закрыть багажник</string>
+    <string name="auto_act_open_front_trunk">Открыть передний багажник</string>
+    <string name="auto_act_close_front_trunk">Закрыть передний багажник</string>
+    <string name="auto_act_fridge_cool">Холодильник: охлаждение</string>
+    <string name="auto_act_fridge_heat">Холодильник: обогрев</string>
+    <string name="auto_act_fridge_off">Холодильник: выкл</string>
+    <string name="auto_level_off">выкл</string>
+    <string name="auto_level_temp">Температура</string>
+    <string name="auto_level_fan">Вентилятор</string>
+    <string name="auto_level_seat_heat_driver">Подогрев сиденья водителя</string>
+    <string name="auto_level_seat_heat_passenger">Подогрев сиденья пассажира</string>
+    <string name="auto_level_seat_vent_driver">Вентиляция сиденья водителя</string>
+    <string name="auto_level_seat_vent_passenger">Вентиляция сиденья пассажира</string>
+    <string name="auto_level_window_driver">Окно водителя</string>
+    <string name="auto_level_window_passenger">Окно пассажира</string>
+    <string name="auto_level_window_rear_left">Заднее левое окно</string>
+    <string name="auto_level_window_rear_right">Заднее правое окно</string>
+    <string name="auto_level_fridge_cool">Охлаждение холодильника</string>
+    <string name="auto_level_fridge_heat">Обогрев холодильника</string>
+    <string name="auto_level_tile_temp">Температура 16–33 °C</string>
+    <string name="auto_level_tile_fan">Вентилятор 1–7</string>
+    <string name="auto_level_tile_seat_heat_driver">Подогрев сиденья водителя выкл, 1–5</string>
+    <string name="auto_level_tile_seat_heat_passenger">Подогрев сиденья пассажира выкл, 1–5</string>
+    <string name="auto_level_tile_seat_vent_driver">Вентиляция сиденья водителя выкл, 1–5</string>
+    <string name="auto_level_tile_seat_vent_passenger">Вентиляция сиденья пассажира выкл, 1–5</string>
+    <string name="auto_level_tile_window_driver">Окно водителя: положение 0–100 %</string>
+    <string name="auto_level_tile_window_passenger">Окно пассажира: положение 0–100 %</string>
+    <string name="auto_level_tile_window_rear_left">Заднее левое окно: положение 0–100 %</string>
+    <string name="auto_level_tile_window_rear_right">Заднее правое окно: положение 0–100 %</string>
+    <string name="auto_level_tile_fridge_cool">Холодильник: охлаждение −6…+6 °C</string>
+    <string name="auto_level_tile_fridge_heat">Холодильник: обогрев 35–50 °C</string>
+    <string name="auto_a11y_level_down">меньше</string>
+    <string name="auto_a11y_level_up">больше</string>
+    <!-- automation messages + special-view labels -->
+    <string name="auto_msg_command_missing">Действие #%1$d: команда не задана</string>
+    <string name="auto_msg_notif_title_empty">Действие #%1$d: заголовок уведомления пуст</string>
+    <string name="auto_msg_app_not_selected">Действие #%1$d: приложение не выбрано</string>
+    <string name="auto_msg_phone_invalid">Действие #%1$d: номер телефона некорректен</string>
+    <string name="auto_msg_nav_dest_missing">Действие #%1$d: место для маршрута не выбрано</string>
+    <string name="auto_msg_url_empty">Действие #%1$d: URL пустой</string>
+    <string name="auto_msg_url_no_scheme">Действие #%1$d: URL должен содержать схему (http://, yandexmusic://, tel:, ...)</string>
+    <string name="auto_msg_ymusic_mode_missing">Действие #%1$d: режим Я.Музыки не выбран</string>
+    <string name="auto_msg_sentry_invalid">Действие #%1$d: некорректное состояние охранного режима</string>
+    <string name="auto_msg_media_key_invalid">Действие #%1$d: выберите «играть» или «пауза»</string>
+    <string name="auto_msg_hotspot_invalid">Действие #%1$d: некорректное состояние точки доступа</string>
+    <string name="auto_msg_screen_invalid">Действие #%1$d: некорректное состояние экрана</string>
+    <string name="auto_msg_speak_text_empty">Действие #%1$d: не задан текст для озвучки</string>
+    <string name="auto_msg_agent_query_prompt_empty">Действие #%1$d: не задан запрос агенту</string>
+    <string name="auto_msg_name_cond_action_required">Название и хотя бы одно условие и действие обязательны</string>
+    <string name="auto_rule_copy_suffix">копия</string>
+    <string name="auto_act_notification">Уведомление</string>
+    <string name="automation_setting_play_sound">Выполнять со звуком</string>
+    <string name="auto_act_launch_app">Запуск приложения</string>
+    <string name="auto_act_call">Звонок</string>
+    <string name="auto_act_navigate">Маршрут в Я.Навигаторе</string>
+    <string name="auto_act_open_url">Открыть URL</string>
+    <string name="auto_act_yandex_music">Яндекс.Музыка</string>
+    <string name="auto_msg_media_volume_missing">Действие #%1$d: уровень громкости не задан</string>
+    <!-- automation special triggers/actions -->
+    <string name="auto_trig_place_enter">Въезд в «%1$s»</string>
+    <string name="auto_trig_service_start">Запуск BYDMate</string>
+    <string name="auto_trig_network_available">Доступен интернет</string>
+    <string name="auto_act_media_volume">Громкость медиа: 2</string>
+    <string name="auto_trig_time_of_day_night">Ночь</string>
+    <!-- automation: executeNow toast + a11y -->
+    <string name="auto_msg_dispatch_sent">Отправлено</string>
+    <string name="auto_msg_dispatch_error">Ошибка: %1$s</string>
+    <string name="auto_msg_unavailable">недоступно</string>
+    <string name="auto_a11y_move_up">выше</string>
+    <string name="auto_a11y_move_down">ниже</string>
+    <string name="auto_a11y_run_now">выполнить сейчас</string>
+    <!-- safety gate block reasons (ActionDispatcher.BlockReason) -->
+    <string name="gate_speed_unknown">Скорость неизвестна</string>
+    <string name="gate_sunroof_speed">Открытие люка заблокировано на скорости %1$d км/ч (&gt;80)</string>
+    <string name="gate_windows_speed">Открытие окон заблокировано на скорости %1$d км/ч (&gt;120)</string>
+    <string name="gate_unlock_speed_unknown">Скорость неизвестна, двери не отпираю</string>
+    <string name="gate_unlock_speed">Отпирание дверей заблокировано на скорости %1$d км/ч (&gt;30)</string>
+    <string name="gate_forbidden_command">Запрещённая команда</string>
+    <string name="gate_frunk_speed_unknown">Скорость неизвестна, передний багажник не открыть</string>
+    <string name="gate_frunk_moving">Передний багажник открывается только на стоянке (скорость %1$d км/ч)</string>
+    <string name="auto_cat_drive_mode">Режим движения</string>
+    <string name="auto_act_drive_mode_eco">Режим ЭКО</string>
+    <string name="auto_act_drive_mode_normal">Режим Норма</string>
+    <string name="auto_act_drive_mode_sport">Режим Спорт</string>
+    <string name="auto_act_drive_mode_snow">Режим Снег</string>
+    <string name="auto_act_drive_mode_sand">Режим Песок</string>
+    <string name="auto_act_drive_mode_mud">Режим Грязь</string>
+    <string name="auto_act_drive_mode_mountain">Режим Горы</string>
+    <string name="auto_act_drive_mode_rock">Режим Камни</string>
+    <string name="auto_act_drive_mode_smart">Умный режим</string>
+    <string name="gate_drive_mode_speed_unknown">Скорость неизвестна, этот режим движения не включаю</string>
+    <string name="gate_drive_mode_speed">Этот режим движения включается только на скорости до 15 км/ч (сейчас %1$d км/ч)</string>
+    <string name="drive_mode_not_supported">Машина не поддерживает этот режим движения</string>
+    <string name="drive_mode_flotation">Машина в аварийном режиме «высокая вода», режим движения не меняю</string>
+    <string name="drive_mode_not_changed">Режим движения не сменился</string>
+    <string name="drive_mode_failed">Не удалось сменить режим движения</string>
+
+    <!-- Voice control (Phase 0) -->
+    <string name="settings_section_voice_agent">Голос-агент</string>
+    <string name="settings_voice_button_mic_header">Кнопка и микрофон</string>
+    <string name="settings_voice_enable_label">Голосовые команды</string>
+    <string name="settings_voice_enable_description">Команды кнопкой руля без интернета</string>
+    <string name="settings_voice_close_after_command_label">Закрывать агента после выполненной команды</string>
+    <string name="settings_voice_close_after_command_description">После выполненной команды или ответа агент закроется сам. Если агент задал вопрос, он дождётся ответа.</string>
+    <string name="settings_voice_model_downloading">Загрузка… %1$d%%</string>
+    <string name="settings_voice_model_unpacking">Распаковка… %1$d%%</string>
+    <string name="voice_listening">Слушаю</string>
+    <string name="voice_thinking">Думаю</string>
+    <string name="voice_error_model_missing">Голосовая модель не загружена. Скачайте её в Настройках, раздел Голос-агент.</string>
+    <string name="voice_block_park_required">Требуется паркинг</string>
+
+    <!-- GigaAM v3: free-form Russian speech recognition (offline) -->
+    <string name="settings_asr_gigaam_title">Распознавание речи</string>
+    <string name="settings_asr_gigaam_ready">Модель готова</string>
+    <string name="settings_asr_gigaam_download">Скачать (%1$s)</string>
+    <string name="settings_asr_gigaam_delete">Удалить модель</string>
+    <string name="settings_asr_gigaam_download_failed">Не удалось скачать модель</string>
+    <string name="settings_asr_gigaam_no_space">Недостаточно места: нужно %1$d МБ, свободно %2$d МБ</string>
+
+    <string name="settings_voice_button_label">Назначить кнопку</string>
+    <string name="settings_voice_button_current">Текущая: %1$s</string>
+    <string name="settings_voice_a11y_hint">Запуск кнопкой руля требует службы специальных возможностей (включается автоматически в разделе Дисплей).</string>
+
+    <!-- call_contact tool: contacts permission row -->
+    <string name="settings_voice_contacts_label">Доступ к контактам</string>
+    <string name="settings_voice_contacts_description">Нужен для звонка контакту по имени голосом</string>
+    <string name="settings_voice_contacts_granted">Разрешено</string>
+    <string name="settings_voice_contacts_grant">Разрешить</string>
+
+    <!-- Voice journal: debug screen with the last voice sessions -->
+    <string name="settings_voice_journal_entry_title">Журнал голоса</string>
+    <string name="settings_voice_journal_entry_description">Последние 50 голосовых сессий</string>
+    <string name="settings_voice_user_phrases_title">Свои фразы для команд</string>
+    <string name="settings_voice_user_phrases_description">Свои слова для встроенных офлайн-команд</string>
+    <string name="settings_voice_user_phrases_button">Открыть</string>
+    <string name="voice_user_phrases_hint">Своя фраза срабатывает, только когда сказана целиком, и тогда важнее встроенной команды.</string>
+    <string name="voice_user_phrases_add">Добавить</string>
+    <string name="voice_user_phrases_field">Фраза</string>
+    <string name="voice_user_phrases_too_long">Не длиннее %1$d символов</string>
+    <string name="voice_user_phrases_too_many">Не больше %1$d фраз на команду</string>
+    <string name="voice_journal_route_nlu">Команда</string>
+    <string name="voice_journal_route_automation">Автоматизация</string>
+    <string name="voice_journal_route_agent">Агент</string>
+    <string name="voice_journal_route_refused">Отказ</string>
+    <string name="voice_journal_timing">Распознано за %1$d мс, выполнено за %2$d мс</string>
+
+    <!-- TTS: offline synthesis of agent replies (Phase 2) -->
+    <string name="settings_tts_header">Ответы агента</string>
+    <string name="settings_tts_toggle">Озвучивать ответы агента</string>
+    <string name="settings_tts_subtitle">Агент отвечает вслух, работает без интернета.</string>
+    <string name="settings_tts_model_delete">Удалить</string>
+    <string name="settings_tts_download_failed">Не удалось скачать голос</string>
+    <string name="settings_voice_volume_hint">Громкость ответов регулируется системным каналом Voice: кнопки громкости на руле или Настройки звука машины</string>
+    <string name="settings_tts_voice_irina">Irina</string>
+    <string name="settings_tts_voice_dmitri">Дмитрий</string>
+    <string name="settings_tts_voice_ruslan">Ruslan</string>
+    <string name="settings_tts_voice_alena">Алёна</string>
+    <string name="settings_tts_voice_mark">Марк</string>
+    <string name="settings_tts_voice_sofia">Софья</string>
+    <string name="settings_tts_voice_local_badge">Локально</string>
+    <string name="settings_tts_voice_ready">Скачан</string>
+    <string name="settings_tts_voice_download_label">Скачать · %1$d МБ</string>
+    <string name="settings_tts_voice_locked_hint">Сначала скачайте голос</string>
+    <string name="settings_tts_voice_desc_piper">Классический синтез, экономичный</string>
+    <string name="settings_tts_voice_desc_vits">Более естественное звучание</string>
+    <string name="settings_tts_voice_desc_supertonic">Новый движок, самое естественное звучание</string>
+
+    <!-- TTS: online voices (Wave N) -->
+    <string name="settings_tts_voice_online_gemini_desc">Живой русский · начало ответа чуть позже локального</string>
+    <string name="settings_tts_voice_online_gemini_badge">ключ OpenRouter</string>
+    <string name="settings_tts_voice_online_minimax_desc">Живой русский · начало ответа чуть позже локального</string>
+    <string name="settings_tts_voice_online_minimax_badge">нужен ключ MiniMax</string>
+    <string name="settings_tts_online_fallback_hint">Онлайн-голоса: нужна сеть; если сервис не ответил за 2 секунды, реплика останется без звука</string>
+
+    <!-- TTS: keys for online voices (Wave N) -->
+    <string name="settings_tts_keys_header">Ключи для онлайн-голосов</string>
+    <string name="settings_tts_keys_openrouter_hint">Ключ и модель берутся из раздела «Интеграции» → «AI подключения».</string>
+    <string name="settings_minimax_provider_label">Провайдер</string>
+    <string name="settings_minimax_provider_official">Официальный</string>
+    <string name="settings_minimax_provider_fal">fal.ai</string>
+    <string name="settings_minimax_provider_replicate">Replicate</string>
+    <string name="settings_minimax_price_hint">$0.06 за 1000 знаков · официальный - самый быстрый старт</string>
+    <string name="settings_minimax_key_saved_placeholder">Ключ сохранён</string>
+
+    <!-- Voice tuning: speed/liveliness sliders + preview (local voices only) -->
+    <string name="settings_tts_tuning_header">Настройки локального голоса</string>
+    <string name="settings_tts_rate_label">Скорость речи</string>
+    <string name="settings_tts_rate_hint">Влево - медленнее и разборчивее, вправо - быстрее</string>
+    <string name="settings_tts_liveliness_label">Живость интонации</string>
+    <string name="settings_tts_liveliness_hint">Влево - ровный \"диктор\", вправо - выразительнее, но может дрожать</string>
+    <string name="settings_tts_preview_button">Прослушать пример</string>
+
+    <!-- Agent identity: name + persona + gender -->
+    <string name="settings_agent_section_header">Агент</string>
+    <string name="settings_agent_name_label">Имя агента</string>
+    <string name="settings_agent_name_hint">Например: Лео. Лучше 2-3 слога, отчётливое слово</string>
+    <string name="settings_agent_persona_label">Характер</string>
+    <string name="settings_persona_snarky">Едкий напарник</string>
+    <string name="settings_persona_navigator">Штурман</string>
+    <string name="settings_persona_engineer">Бортинженер</string>
+    <string name="settings_agent_gender_label">Пол агента</string>
+    <string name="settings_agent_gender_male">Мужской</string>
+    <string name="settings_agent_gender_female">Женский</string>
+    <string name="settings_agent_gender_hint">Действует на все голоса: у каждого источника есть мужской и женский вариант</string>
+    <string name="settings_route_navigator_label">Навигатор для маршрутов</string>
+    <string name="settings_route_navigator_yandex">Яндекс Навигатор</string>
+    <string name="settings_route_navigator_dgis">2ГИС</string>
+    <string name="settings_route_navigator_maps">Яндекс Карты</string>
+    <string name="settings_route_navigator_waze">Waze</string>
+    <string name="settings_route_navigator_hint">Какое приложение открывать для маршрутов и поиска на карте</string>
+    <string name="settings_agent_memory_title">Память о водителе</string>
+    <string name="settings_agent_memory_hint">Агент запоминает имя и устойчивые предпочтения, когда вы ему об этом говорите. Скажите «забудь …», чтобы убрать один факт</string>
+    <string name="settings_agent_memory_empty">Пока ничего не запомнено</string>
+    <string name="settings_agent_memory_forget_all">Забыть всё</string>
+    <string name="settings_agent_memory_forget_one">Забыть</string>
+
+    <!-- Voice agent (Phase 1) -->
+    <string name="agent_enable_title">Голосовой AI-агент</string>
+    <string name="agent_enable_desc">Отвечает своими словами на сложные вопросы и команды. Нужен ключ: задайте его в разделе «Интеграции».</string>
+    <string name="agent_model_shared_caption">Ключ OpenRouter и модель для агента настраиваются в разделе Интеграции</string>
+    <string name="agent_chat_open">Чат с агентом (отладка)</string>
+    <string name="agent_test_model_button">Тест модели</string>
+    <string name="agent_test_model_running">Проверка модели...</string>
+    <string name="agent_test_model_result">%1$s: ответ за %2$.1f с - \"%3$s\"</string>
+    <string name="agent_test_model_disabled">Сначала включите агента и задайте ключ в разделе «Интеграции».</string>
+    <string name="agent_exa_api_key_label">Exa API Key (веб-поиск)</string>
+
+    <!-- Voice agent (Wave J): multi-provider LLM connections -->
+    <string name="settings_conn_not_configured">Подключение не настроено</string>
+    <string name="settings_conn_check_ok">Модель ответила за %1$.1f с</string>
+
+    <!-- Wave J: AI connections -->
+    <string name="settings_ai_connections_header">AI подключения</string>
+    <string name="settings_conn_custom_title">Своё подключение</string>
+    <string name="settings_conn_configured">Настроено</string>
+    <string name="settings_conn_api_key_label">API ключ</string>
+    <string name="settings_conn_name_label">Название</string>
+    <string name="settings_conn_base_url_label">Base URL</string>
+    <string name="settings_conn_model_label">Модель (id)</string>
+    <string name="settings_conn_check">Проверить</string>
+    <string name="settings_conn_checking">Проверяю…</string>
+    <string name="settings_zai_hint">Бесплатный вариант, отвечает медленнее. Подходит как запасной.</string>
+    <string name="settings_custom_hint">Любой OpenAI-совместимый API. Пресет подставляет адрес и модель, ключ свой.</string>
+    <string name="settings_custom_extra_json_label">Доп. параметры запроса (JSON)</string>
+    <string name="settings_custom_extra_json_hint">Подмешиваются в каждый запрос к этому серверу, например {\"thinking\": false} чтобы выключить рассуждения</string>
+    <string name="settings_custom_extra_json_invalid">Некорректный JSON</string>
+    <!-- Wave O T11: custom model list + human-readable network errors -->
+    <string name="settings_custom_list_models">Список моделей</string>
+    <string name="settings_error_dns">Сервер недоступен: интернет машины не видит этот адрес (DNS)</string>
+    <string name="settings_error_timeout">Сервер не ответил за отведённое время</string>
+    <string name="settings_preset_hint_cloudflare">Замените ACCOUNT_ID в адресе на ID аккаунта из панели Cloudflare. Бесплатно около 450 запросов в день (glm-4.7-flash).</string>
+    <string name="settings_preset_hint_vercel">Кредит 5$ в месяц без карты. Часть моделей на бесплатном тарифе может отдавать ошибку 403.</string>
+    <string name="settings_preset_hint_kimi">1000 запросов в день бесплатно.</string>
+    <string name="settings_preset_hint_nanogpt">Подписка 8$ в месяц, оплата криптой.</string>
+    <string name="settings_preset_hint_deepseek" formatted="false">Оплата по факту, скидка 50% ночью по Москве.</string>
+    <string name="settings_preset_hint_mistral">Бесплатно с верификацией телефона.</string>
+    <string name="settings_models_header">Выбор моделей</string>
+    <string name="settings_model_primary">Основная модель</string>
+    <string name="settings_model_fallback">Резервная модель</string>
+    <string name="settings_model_none">Нет</string>
+    <string name="settings_models_hint">Резервная модель включается сама, если основная не отвечает (после повторной попытки). В списке только настроенные подключения.</string>
+    <string name="settings_search_status_title">Поиск в интернете</string>
+    <string name="settings_search_source_exa">Exa</string>
+    <string name="settings_search_source_native">встроенный поиск подключения</string>
+    <string name="settings_search_source_none">недоступен</string>
+    <string name="settings_search_status_hint">Без ключа Exa агент использует встроенный поиск текущего подключения. Если и он недоступен, агент честно скажет, что поиск не работает.</string>
+    <string name="settings_section_service_title">Сервис и данные</string>
+    <string name="settings_battery_capacity_desc">Используется для оценки запаса хода и стоимости</string>
+    <string name="settings_tariff_home_desc">Стоимость 1 кВт·ч при зарядке дома (AC)</string>
+    <string name="settings_tariff_dc_desc">Стоимость 1 кВт·ч на быстрых зарядках</string>
+    <string name="settings_tariff_trip_desc">Каким тарифом считать стоимость поездок</string>
+    <string name="settings_consumption_good_desc">Поездки с меньшим расходом подсвечиваются зелёным</string>
+    <string name="settings_consumption_bad_desc">Поездки с большим расходом подсвечиваются красным</string>
+    <string name="settings_widget_show_desc">Заряд батареи поверх любого приложения</string>
+    <string name="settings_widget_reset_position_desc">Вернуть виджет на место по умолчанию</string>
+    <string name="settings_log_recording_desc">Подробный журнал работы для разбора проблем. Включайте по запросу разработчика</string>
+    <string name="settings_fid_recorder_title">Регистратор датчиков</string>
+    <string name="settings_fid_recorder_desc">Пишет все изменения датчиков машины в файл в Загрузках, для разбора</string>
+    <string name="settings_fid_recorder_file">Файл: %1$s</string>
+    <string name="settings_fid_recorder_error">Не записывает: %1$s</string>
+    <string name="settings_quiet_notification_title">Тихое уведомление в шторке</string>
+    <string name="settings_quiet_notification_desc">Уведомление BYDMate уходит в свёрнутый список без значка в строке состояния. Совсем убрать его нельзя: Android требует уведомление для работы в фоне</string>
+    <string name="settings_config_restore_desc">Текущие данные будут заменены содержимым архива.</string>
+    <string name="settings_autostart_header">Автозапуск</string>
+    <string name="settings_autostart_desc">BYDMate стартует вместе с машиной. Если после обновления прошивки автозапуск слетел, включите его в системной настройке</string>
+    <string name="settings_places_inline_hint">Точка добавляется по карте или по текущему положению машины</string>
+    <string name="settings_agent_debug_row_title">Проверка и отладка</string>
+    <string name="settings_agent_debug_row_desc">Тест модели проверяет подключение, чат показывает диалог с агентом текстом</string>
+
+    <!-- Donation dialog + support card -->
+    <string name="donate_auto_title">Спасибо, что вы с BYDMate</string>
+    <string name="donate_auto_body">Проект некоммерческий и полностью бесплатный, развивается на чистом энтузиазме. Если BYDMate оказался вам полезен и вы хотите сказать спасибо, поддержите разработку: переводом USDT в сетях EVM или картой через ЮMoney.</string>
+    <string name="donate_settings_title">Поддержать проект</string>
+    <string name="donate_settings_body">BYDMate некоммерческий и бесплатный. Если хотите поддержать разработку, переведите USDT на адрес ниже или оплатите картой через ЮMoney.</string>
+    <string name="donate_qr_hint">Наведите камеру телефона на код</string>
+    <string name="donate_address_label">Адрес USDT · сети EVM</string>
+    <string name="donate_copy_button">Скопировать адрес</string>
+    <string name="donate_card_label">Картой · ЮMoney</string>
+    <string name="donate_card_body">Оплата картой или кошельком ЮMoney. Откройте ссылку на телефоне и укажите любую сумму.</string>
+    <string name="donate_copy_link_button">Скопировать ссылку</string>
+    <string name="donate_copied_toast">Адрес скопирован</string>
+    <string name="donate_networks">Сети: Arbitrum One, Optimism, Polygon, BNB Smart Chain, Avalanche, Ethereum</string>
+    <string name="donate_warning">Не отправляйте через TON, TRON (TRC-20) или Solana. Средства будут потеряны.</string>
+    <string name="donate_later_button">Позже</string>
+    <string name="donate_already_button">Я уже поддержал</string>
+    <string name="donate_close_button">Закрыть</string>
+    <string name="settings_donate_header">Поддержка</string>
+    <string name="settings_donate_card_body">BYDMate бесплатный и некоммерческий. Если он вам полезен, вы можете поддержать разработку.</string>
+    <string name="settings_donate_button">Поддержать проект</string>
+
+    <!-- HUD navigation -->
+    <string name="settings_hud_header">HUD (проекционный дисплей)</string>
+    <string name="settings_hud_title">Навигация на HUD</string>
+    <string name="settings_hud_desc">Подсказки Яндекс Навигатора на проекционном дисплее: манёвр, дистанция, улица, прибытие</string>
+    <string name="settings_hud_speed_sign_title">Знак скорости под стрелкой</string>
+    <string name="settings_hud_speed_sign_desc">Красный знак ограничения скорости в нижнем слоте HUD</string>
+    <string name="settings_hud_status_unsupported">Шина SOME/IP не найдена: на этой машине вывод на HUD недоступен</string>
+    <string name="settings_hud_status_connecting">Подключение к шине…</string>
+    <string name="settings_hud_status_on">Передача на HUD активна</string>
+    <string name="settings_hud_status_bind_failed">Не удалось подключиться к шине SOME/IP</string>
+    <string name="settings_hud_status_cluster_only">HUD в этой машине нет: подсказки идут в штатную карточку навигации на приборке</string>
+    <string name="settings_hud_hint">Нужна комплектация с проекционным дисплеем. Данные берутся из окна Яндекс Навигатора</string>
+    <string name="settings_hud_mode_title">Способ вывода на стекло</string>
+    <string name="settings_hud_mode_1">Способ 1</string>
+    <string name="settings_hud_mode_2">Способ 2</string>
+    <string name="settings_hud_mode_1_desc">Способ 1. Подсказки идут на стекло, приборку приложение не трогает.</string>
+    <string name="settings_hud_mode_2_desc">Способ 2. Подсказки идут и на стекло, и на приборку: там появится карточка навигации со стрелкой, метрами и улицей.</string>
+    <string name="settings_hud_mode_3">Способ 3</string>
+    <string name="settings_hud_mode_3_desc">Способ 3. Как способ 2, и ещё одним путём. Попробуйте, если первые два ничего не показали.</string>
+    <string name="settings_hud_mode_trial">пробный</string>
+    <string name="settings_hud_mode_pick_hint">Не знаете, какой выбрать? Запустите «Проверку HUD».</string>
+    <string name="settings_hud_answer_title">Какое число вы увидели на стекле?</string>
+    <string name="settings_hud_answer_text">Приложение само выберет способ. Если видели несколько чисел, нажмите меньшее.</string>
+    <string name="settings_hud_answer_none">Ничего</string>
+    <string name="settings_hud_answer_chosen_title">Выбран способ %1$d</string>
+    <string name="settings_hud_answer_chosen_text">Подсказки пойдут на стекло этим способом. Поменять его можно в настройках HUD.</string>
+    <string name="settings_hud_answer_nothing_title">Стекло ничего не показало</string>
+    <string name="settings_hud_answer_nothing_text">Ни один из способов не сработал на стекле этой машины. Запишите лог и пришлите его нам, мы разберёмся.</string>
+    <string name="settings_hud_answer_done">Готово</string>
+    <!-- Blind-spot cameras -->
+    <string name="settings_blindspot_header">Слепые зоны</string>
+    <string name="settings_blindspot_title">Камера по поворотнику</string>
+    <string name="settings_blindspot_desc">Левый поворотник - левая камера на приборке, правый - окошко на главном экране. По умолчанию выключено.</string>
+    <string name="settings_blindspot_threshold_title">Порог скорости</string>
+    <string name="settings_blindspot_threshold_desc">Ниже этой скорости камера не показывается</string>
+    <string name="settings_blindspot_pip_width_title">Ширина окошка</string>
+    <string name="settings_blindspot_pip_width_desc">Ширина окошка на главном экране в % от ширины экрана</string>
+    <string name="settings_blindspot_rotate_title">Окно камеры вертикально</string>
+    <string name="settings_blindspot_rotate_desc">Картинка повернута на 90°, окно стоит вертикально, как зеркало</string>
+    <string name="settings_blindspot_position_title">Положение окошка</string>
+    <string name="settings_blindspot_position_desc">Правая камера. Показывает пустое окошко поверх экрана: перетащите его пальцем туда, где будет камера</string>
+    <string name="settings_blindspot_position_button">Настроить положение</string>
+    <string name="settings_blindspot_position_done">Готово</string>
+    <string name="settings_blindspot_position_drag">Перетащите окошко</string>
+    <string name="settings_blindspot_both_main_title">Обе камеры на главный экран</string>
+    <string name="settings_blindspot_both_main_desc">Левая камера показывается рядом с правой на планшете, приборка не используется</string>
+    <string name="settings_blindspot_both_cluster_title">Обе камеры на приборку</string>
+    <string name="settings_blindspot_both_cluster_desc">Левая и правая камеры показываются на приборке, главный экран свободен</string>
+    <string name="settings_blindspot_left_position_title">Положение левой камеры</string>
+    <string name="settings_blindspot_left_position_desc">По умолчанию левое окошко стоит зеркально правому. Перетащите, чтобы задать своё место</string>
+    <string name="settings_blindspot_glow_title">Подсветка при объекте в слепой зоне</string>
+    <string name="settings_blindspot_glow_desc">Оранжевая рамка вокруг окна, когда датчик видит машину рядом</string>
+    <string name="settings_blindspot_hint">Нужна комплектация с круговым обзором. Если вывести проекцию на приборку невозможно, окошко работает на главном экране.</string>
+    <string name="settings_secret_show">Показать ключ</string>
+    <string name="settings_secret_hide">Скрыть ключ</string>
+
+    <!-- Split-screen pill menu -->
+    <string name="split_menu_mirror">Поменять стороны</string>
+    <string name="split_menu_swap">Поменять приложения</string>
+    <string name="split_menu_pick_left">Приложение слева…</string>
+    <string name="split_menu_pick_right">Приложение справа…</string>
+    <string name="split_menu_exit">Выход</string>
+    <string name="split_picker_title_change">Выберите приложение</string>
+    <string name="split_picker_title_left">Выберите приложение для левой панели</string>
+    <string name="split_picker_title_right">Выберите приложение для правой панели</string>
+    <string name="split_picker_title_wide">Выберите приложение для широкой панели (2/3)</string>
+    <string name="split_picker_title_narrow">Выберите приложение для узкой панели (1/3)</string>
+    <string name="split_freeform_reboot_hint">Разделение экрана включится после перезагрузки машины</string>
+    <string name="split_freeform_unsupported_hint">Разделение экрана недоступно на прошивке этой машины</string>
+    <string name="navigate_maps_shortcut_failed">Карты не приняли маршрут: добавьте Место «Дом» или «Работа» в BYDMate</string>
+    <string name="split_launch_failed">Не удалось запустить разделение экрана</string>
+    <string name="split_launch_failed_adb">Не удалось запустить разделение экрана: требуется разблокированный ADB</string>
+    <!-- Automation action: split_screen -->
+    <string name="automation_action_split_screen">Разделение экрана</string>
+    <string name="auto_act_split_screen">Разделение экрана</string>
+    <!-- Automation actions: split_screen_close / split_screen_toggle (no payload) -->
+    <string name="automation_action_split_screen_close">Закрыть разделение экрана</string>
+    <string name="auto_act_split_screen_close">Закрыть разделение экрана</string>
+    <string name="automation_action_split_screen_toggle">Переключить разделение экрана</string>
+    <string name="auto_act_split_screen_toggle">Переключить разделение экрана</string>
+    <string name="split_action_narrow_label">Приложение 1/3</string>
+    <string name="split_action_wide_label">Приложение 2/3</string>
+    <string name="split_action_side_left">1/3 слева</string>
+    <string name="split_action_side_right">1/3 справа</string>
+    <string name="split_action_tap_to_configure">Выбрать приложения</string>
+    <string name="auto_msg_split_narrow_empty">Действие #%1$d: не выбрано приложение 1/3</string>
+    <string name="auto_msg_split_wide_empty">Действие #%1$d: не выбрано приложение 2/3</string>
+    <string name="auto_msg_split_same_package">Действие #%1$d: оба приложения должны быть разными</string>
+    <string name="auto_msg_split_invalid_side">Действие #%1$d: неверная сторона (left/right)</string>
+    <string name="settings_widget_left_tap_mode_label">Действие левого тапа</string>
+    <string name="settings_widget_left_tap_mode_app">Запускать приложение</string>
+    <string name="settings_widget_left_tap_mode_split">Запускать разделение экрана</string>
+    <!-- Widget button icons -->
+    <string name="widget_button_icon_hint">Иконка на кнопке виджета</string>
+    <string name="widget_button_icon_window">Окно</string>
+    <string name="widget_button_icon_sunroof">Люк</string>
+    <string name="widget_button_icon_trunk">Багажник</string>
+    <string name="widget_button_icon_front_trunk">Передний багажник</string>
+    <string name="widget_button_icon_lock">Замок</string>
+    <string name="widget_button_icon_unlock">Разблокировка</string>
+    <string name="widget_button_icon_ac">Кондиционер</string>
+    <string name="widget_button_icon_fan">Вентиляция</string>
+    <string name="widget_button_icon_heat">Обогрев</string>
+    <string name="widget_button_icon_seat">Сиденье</string>
+    <string name="widget_button_icon_light">Свет</string>
+    <string name="widget_button_icon_mirror">Зеркала</string>
+    <string name="widget_button_icon_camera">Камера</string>
+    <string name="widget_button_icon_navigation">Навигация</string>
+    <string name="widget_button_icon_cluster">Приборка</string>
+    <string name="widget_button_icon_car">Машина</string>
+    <string name="widget_button_icon_home">Домой</string>
+    <string name="widget_button_icon_music">Музыка</string>
+    <string name="widget_button_icon_phone">Звонок</string>
+    <string name="widget_button_icon_youtube">YouTube</string>
+    <string name="widget_button_icon_split">Разделение экрана</string>
+    <string name="widget_button_icon_sentry">Сторож</string>
+    <string name="widget_button_icon_wifi">Wi-Fi</string>
+    <string name="widget_button_icon_charge">Зарядка</string>
+    <string name="widget_button_icon_fridge">Холодильник</string>
+    <string name="widget_button_icon_star">Избранное</string>
+    <!-- Split-screen settings section -->
+    <string name="settings_section_split_title">Разделение экрана</string>
+    <string name="settings_split_enable_title">Разделение экрана 1/3 + 2/3</string>
+    <string name="settings_split_enable_desc">Два freeform-окна: одно на треть экрана, другое на две трети. По умолчанию выключено. Штатная кнопка разделения по-прежнему делит экран пополам.</string>
+    <string name="settings_split_clear_pair_title">Сбросить последнюю пару</string>
+    <string name="settings_split_clear_pair_desc">Удалить сохранённую пару приложений. Следующий запуск откроет пикер.</string>
+    <string name="settings_split_pair_cleared">Пара сброшена</string>
+    <string name="settings_split_wide_app_title">Широкая часть (2/3)</string>
+    <string name="settings_split_narrow_app_title">Узкая часть (1/3)</string>
+    <string name="settings_split_app_not_selected">не выбрано</string>
+    <string name="settings_split_howto_body">Разделение экрана можно включить тремя способами.\nСамый простой: тап по левой трети плавающего виджета. Для этого в разделе «Тап по виджету» включите «Зонирование тапов», а в пункте «Действие левого тапа» выберите «Запускать разделение экрана».\nЧерез автоматизации: добавьте в правило действие «Разделение экрана». Рядом есть «Закрыть разделение экрана» и «Переключить разделение экрана».\nГолосом: просто попросите голос-агента включить разделение экрана.</string>
+    <string name="settings_split_mechanism_title">Механизм разделения</string>
+    <string name="settings_split_mechanism_freeform">Окна BYDMate</string>
+    <string name="settings_split_mechanism_native">Родное разделение</string>
+    <string name="settings_split_mechanism_native_hint">Разделение выполняет прошивка машины. Вид зависит от прошивки: две панели 1/3 и 2/3 или пополам с выбором второго приложения на экране.</string>
+    <string name="settings_split_mechanism_platformized_hint">На этой прошивке экран делит сама машина: панели 1/3 и 2/3, разделитель и жест обмена родные. BYDMate только запускает выбранную пару и возвращает приложение в его панель.</string>
+    <string name="settings_split_try_native_hint">Попробуйте режим Родное разделение.</string>
+    <string name="split_feature_disabled">Разделение экрана выключено в настройках</string>
+    <!-- Tech panel («Техника»): compact card cell + full screen -->
+    <string name="dashboard_battery_insulation_label">изоляция</string>
+    <string name="tech_title">Техника</string>
+    <string name="tech_status_online">autoservice online</string>
+    <string name="tech_status_offline">autoservice offline</string>
+    <string name="tech_no_data">Машина не отдаёт эти данные</string>
+    <string name="tech_card_battery_now">Батарея · сейчас</string>
+    <string name="tech_card_limits">Лимиты BMS</string>
+    <string name="tech_card_cells">Ячейки</string>
+    <string name="tech_card_motors">Моторы и инверторы</string>
+    <string name="tech_card_climate">Климат</string>
+    <string name="tech_card_tyres">Шины · давление / температура</string>
+    <string name="tech_card_history">Батарея · история</string>
+    <string name="tech_label_remain_kwh">Остаток</string>
+    <string name="tech_label_hv_voltage">напряжение HV</string>
+    <string name="tech_label_power">мощность</string>
+    <string name="tech_label_full_cycles">полных циклов</string>
+    <string name="tech_caption_full_cycles">%1$s кВт·ч ÷ %2$s</string>
+    <string name="tech_caption_full_cycles_empty">появится после первой зарядки</string>
+    <string name="tech_label_battery_power">мощность батареи</string>
+    <string name="tech_label_max_charge">макс. мощность заряда</string>
+    <string name="tech_label_max_discharge_allow">макс. мощность разряда</string>
+    <string name="tech_label_max_discharge">доступная мощность батареи</string>
+    <string name="tech_label_motor_temp">температура мотора</string>
+    <string name="tech_label_inverter_temp">температура инвертора</string>
+    <string name="tech_label_rpm">обороты, об/мин</string>
+    <string name="tech_label_pedals">педаль газа / тормоза</string>
+    <string name="tech_label_front">перед</string>
+    <string name="tech_label_rear">зад</string>
+    <string name="tech_label_compressor">компрессор</string>
+    <string name="tech_label_climate">климат</string>
+    <string name="tech_label_inside_outside">в салоне / за бортом</string>
+    <string name="tech_on">вкл</string>
+    <string name="tech_off">выкл</string>
+    <string name="tech_tyre_fl">ПЛ</string>
+    <string name="tech_tyre_fr">ПП</string>
+    <string name="tech_tyre_rl">ЗЛ</string>
+    <string name="tech_tyre_rr">ЗП</string>
+    <!-- %1$.1f = insulation megaohms -->
+    <string name="tech_value_mohm">%1$.1f МОм</string>
+    <!-- %1$d = cell delta millivolts -->
+    <string name="tech_value_mv">%1$d мВ</string>
+    <!-- %1$d = volts -->
+    <string name="tech_value_volt">%1$d В</string>
+    <!-- %1$d = kilowatts -->
+    <string name="tech_value_kw">%1$d кВт</string>
+    <!-- %1$.1f = kilowatt-hours -->
+    <string name="tech_value_kwh">%1$.1f кВт·ч</string>
+    <!-- %1$d = watts -->
+    <string name="tech_value_watt">%1$d Вт</string>
+    <!-- %1$.2f = percent of battery per hour -->
+    <string name="tech_value_percent_per_hour">%1$.2f %%/ч</string>
+    <!-- %1$d = degrees celsius, short form -->
+    <string name="tech_value_deg">%1$d°</string>
+    <!-- %1$d = degrees celsius -->
+    <string name="tech_value_temp">%1$d°C</string>
+    <!-- %1$d = percent -->
+    <string name="tech_value_percent">%1$d%%</string>
+    <!-- %1$.2f = bar, %2$d = degrees celsius -->
+    <string name="tech_value_tyre">%1$.2f бар · %2$d°</string>
+    <!-- %1$.2f = bar -->
+    <string name="tech_value_tyre_pressure">%1$.2f бар</string>
+    <string name="tech_value_cell_scale">%1$.2f В</string>
+    <string name="tech_hint_soh" formatted="false">Здоровье батареи по оценке самой машины: сколько ёмкости осталось от новой. 100 % у новой машины, медленно снижается с годами. Это отдельная цифра, с «Остатком» она формулой не связана, сравнивать их между собой не нужно.</string>
+    <string name="tech_hint_remain_kwh" formatted="false">Сколько энергии осталось по оценке самой батареи. Она учитывает износ, поэтому цифра меньше, чем процент заряда, умноженный на заводскую ёмкость. Точнее всего сразу после зарядки до 100 %. Экран может держать 100 %, пока батарея уже отдала первые киловатт-часы, поэтому в самом верху шкалы остаток и процент расходятся сильнее.</string>
+    <string name="tech_hint_hv_voltage">Напряжение тяговой батареи. Растёт при зарядке и падает по мере разряда, у этой машины примерно 450…560 В. Само по себе ни о чём не говорит, полезно вместе с мощностью.</string>
+    <string name="tech_hint_motor_power">Мощность на электромоторах прямо сейчас: столько машина отдаёт на колёса или забирает с них при рекуперации. На стоянке 0. Значение считает сама машина.</string>
+    <string name="tech_hint_power">Сколько энергии батарея отдаёт прямо сейчас. Плюс: машина тратит (разгон, климат). Минус: батарея принимает энергию: рекуперация при торможении или зарядка от станции. Второе число: с какой скоростью уходит заряд, процентов в час. На стоянке это расход бортовой электроники.</string>
+    <string name="tech_hint_12v">Напряжение обычного 12-вольтового аккумулятора, который питает электронику. На заведённой машине 13…14,5 В. Если на стоянке ниже 12 В, аккумулятор слабеет.</string>
+    <string name="tech_hint_insulation">Сопротивление между высоковольтной батареей и кузовом. Чем больше, тем лучше: норма единицы мегаом. Падает к 0,5 МОм и ниже: где-то повреждена изоляция, пора на сервис.</string>
+    <string name="tech_hint_bms_limits">Все три числа приложение не считает, а читает у контроллера батареи (BMS) как есть. «Макс. мощность заряда» и «макс. мощность разряда» это верхние границы, которые BMS сейчас разрешает на зарядку и на отдачу из батареи; те же цифры показывают диагностические сканеры. «Доступная мощность батареи» это отдельное, меньшее число: BYD его не расшифровывает, по поведению это мощность, которую батарея готова отдавать длительно. На коротком разгоне машина берёт больше доступного, это нормально. На холодной или почти полной батарее все три значения ниже: зимой зарядка медленнее и рекуперация слабее.</string>
+    <string name="tech_hint_cells">Батарея состоит из сотен ячеек. Показаны самая слабая и самая сильная и разница между ними. Разница до 20…30 мВ в норме. Постоянно большая разница: одна из ячеек стареет быстрее других.</string>
+    <string name="tech_hint_motors">Температура электромоторов и инверторов, которые ими управляют. В обычной езде до 60…80°. При долгом разгоне или буксировке греются сильнее, и машина сама снижает мощность, пока не остынут.</string>
+    <string name="tech_hint_compressor">Сколько ватт потребляет компрессор кондиционера и теплового насоса. Это главный потребитель кроме моторов: летом в жару и зимой в мороз он заметно съедает запас хода.</string>
+    <string name="tech_hint_tyres">Давление и температура каждого колеса от датчиков в шинах. Давление растёт на 0,2…0,3 бар по мере прогрева в поездке, это нормально. Одно колесо заметно ниже других: проверьте, не спускает ли.</string>
+    <string name="tech_order_hint">Удерживайте карточку, чтобы поменять порядок</string>
+    <string name="trips_temp_chip">Температура</string>
+    <string name="trips_temp_title">Расход и температура</string>
+    <string name="trips_temp_period_all">за всё время</string>
+    <string name="trips_temp_card_chart">РАСХОД ПРОТИВ ТЕМПЕРАТУРЫ</string>
+    <string name="trips_temp_card_stats">ЦИФРЫ</string>
+    <string name="trips_temp_not_enough">График появится, когда наберётся %1$d поездок с температурой: пока %2$d</string>
+    <string name="trips_temp_narrow_note">Пока все поездки при %1$s…%2$s °C</string>
+    <string name="trips_temp_count">Поездок с температурой</string>
+    <string name="trips_temp_median_cold">Медиана при &lt; 0 °C</string>
+    <string name="trips_temp_median_mild">Медиана при 0…+15 °C</string>
+    <string name="trips_temp_median_warm">Медиана при &gt; +15 °C</string>
+    <string name="trips_temp_winter_diff">Разница зима/лето</string>
+    <string name="trips_temp_percent">%1$s%%</string>
+    <string name="trips_temp_kwh_per_100">%1$.1f кВт·ч/100км</string>
+    <string name="trips_temp_verdict_header">ВЫВОД</string>
+    <string name="trips_temp_verdict_winter">В холод расход выше, чем в тепло, на %1$d%%. Это нормально — зимой заряжайте с запасом.</string>
+    <string name="trips_temp_verdict_not_higher">В холод расход не выше, чем в тепло (разница %1$s%%). Зимней надбавки по вашим поездкам пока не видно.</string>
+    <string name="trips_temp_verdict_narrow">Пока все поездки при %1$s…%2$s °C — сравнить с холодом или жарой пока не с чем.</string>
+    <string name="trips_temp_verdict_none">Пока сравнивать не с чем: нужны поездки и в холод, и в тепло.</string>
+
+    <!-- Post-restore check dialog -->
+    <string name="post_restore_title">После восстановления</string>
+    <string name="post_restore_intro">Настройки восстановлены. Чтобы всё работало, осталось:</string>
+    <string name="post_restore_overlay">Виджет и окна поверх других приложений</string>
+    <string name="post_restore_mic">Микрофон для голосового управления</string>
+    <string name="post_restore_contacts">Контакты для звонков через агента</string>
+    <string name="post_restore_asr">Модель распознавания речи</string>
+    <string name="post_restore_tts">Голос озвучки: %1$s</string>
+    <string name="post_restore_reboot">Перезагрузите магнитолу, чтобы отключение штатного ассистента вступило в силу</string>
+    <string name="post_restore_allow">Разрешить</string>
+    <string name="post_restore_download_asr">Скачать 226 МБ</string>
+    <string name="post_restore_download">Скачать</string>
+    <string name="post_restore_close">Закрыть</string>
+    <string name="notif_channel_tracking_name">BYDMate: учёт поездок</string>
+    <string name="notif_channel_tracking_desc">Учёт поездок и зарядок</string>
+    <string name="notif_channel_tracking_quiet_name">BYDMate: учёт поездок (тихо)</string>
+    <string name="notif_channel_tracking_quiet_desc">Учёт поездок и зарядок, свёрнуто в шторке</string>
+    <string name="notif_channel_auto_silent_name">Автоматизации без звука</string>
+    <string name="notif_channel_auto_silent_desc">Уведомления автоматизаций без звука</string>
+    <string name="notif_channel_auto_sound_name">Автоматизации со звуком</string>
+    <string name="notif_channel_auto_sound_desc">Уведомления автоматизаций со звуком</string>
+    <string name="notif_channel_auto_confirm_name">Подтверждение автоматизаций</string>
+    <string name="notif_channel_auto_confirm_desc">Запросы на подтверждение правил автоматизации</string>
+    <!-- Automation wave 2: share, import, test run -->
+    <string name="automation_import_button">Импорт</string>
+    <string name="automation_share_button">Поделиться</string>
+    <string name="automation_view_list">Списком</string>
+    <string name="automation_view_grid">Карточками</string>
+    <string name="automation_share_note">Из файла удалены номера телефонов, имена контактов и привязки к вашим местам. Из ссылок удаляются логин с паролем и параметры, похожие на ключи; сам адрес проверьте перед отправкой. Тексты уведомлений и фраз, запросы агенту и точки маршрутов остаются, их тоже стоит проверить.</string>
+    <string name="automation_share_error">Не удалось сохранить файл: %1$s</string>
+    <string name="automation_test_run_button">Тестовый запуск</string>
+    <string name="automation_test_run_hint">Выполнит все действия сразу, как будто сработало условие</string>
+    <string name="automation_test_run_done">Тестовый запуск: все действия выполнены</string>
+    <string name="automation_test_run_failed">Тестовый запуск: не выполнено %1$d из %2$d. %3$s</string>
+    <string name="automation_test_run_no_speed">нет свежих данных о скорости, действие пропущено</string>
+    <string name="automation_test_run_stopped">Тестовый запуск остановлен</string>
+    <string name="automation_rule_limit">Можно создать не больше %1$d автоматизаций</string>
+    <string name="automation_import_save_failed">Не удалось добавить автоматизацию: %1$s</string>
+    <string name="automation_import_pick_title">Файлы автоматизаций в Download</string>
+    <string name="automation_import_pick_empty">В папке Download нет файлов bydmate_rule_*.json</string>
+    <string name="automation_import_invalid">Не удалось прочитать файл: это не автоматизация BYDMate</string>
+    <string name="automation_import_newer_version">Автоматизация из более новой версии, обновите приложение</string>
+    <string name="automation_import_power_off_only">Эта автоматизация могла сработать только на выключенной машине, такого условия больше нет</string>
+    <string name="automation_import_preview_title">Проверьте автоматизацию</string>
+    <string name="automation_import_conditions">Условия</string>
+    <string name="automation_import_actions">Действия</string>
+    <string name="automation_import_need_attention">Нужно уточнить</string>
+    <string name="automation_import_place_missing">Место «%1$s» не найдено</string>
+    <string name="automation_import_pick_place">Выбрать место</string>
+    <string name="automation_import_contact_missing">Контакт не найден</string>
+    <string name="automation_import_pick_contact">Выбрать контакт</string>
+    <string name="automation_import_enable_now">Включить сразу</string>
+    <string name="automation_import_enable_now_hint">Иначе добавится выключенной</string>
+    <string name="automation_import_add">Добавить</string>
+    <string name="automation_import_name_suffix">импорт</string>
+    <string name="automation_share_continue">Продолжить</string>
+    <string name="automation_share_saved_toast">Файл сохранён: %1$s</string>
+    <string name="automation_rule_deleted">Правило уже удалено</string>
+    <string name="automation_rule_deleted_save_new">Сохранить как новое</string>
+    <string name="automation_test_run_unrecognized">команда не распознана, действие пропущено</string>
+    <string name="automation_import_url_required">Адрес ссылки нужно ввести заново</string>
+    <string name="automation_import_url_params_stripped">Из ссылки удалены параметры, похожие на ключи, проверьте адрес</string>
+    <string name="automation_import_logic_all">Все условия</string>
+    <string name="automation_import_logic_any">Любое условие</string>
+    <string name="automation_import_nav_home">домой (адрес из навигатора)</string>
+    <string name="automation_import_nav_work">на работу (адрес из навигатора)</string>
+    <string name="automation_import_nav_search">поиск «%1$s»</string>
+    <string name="automation_import_nav_show">только показать точку</string>
+    <string name="automation_import_nav_go">сразу «Поехали»</string>
+    <string name="automation_import_nav_maps">в Яндекс Картах</string>
+    <string name="automation_import_minimize">затем свернуть</string>
+    <string name="help_badge_content_description">Подсказка</string>
+
+    <!-- Automation step failure reasons (ActionDispatcher, window readback) -->
+    <string name="dispatch_sentry_invalid_state">Некорректное состояние охранного режима</string>
+    <string name="dispatch_sentry_failed">Не удалось переключить охранный режим</string>
+    <string name="dispatch_hotspot_invalid_state">Некорректное состояние точки доступа Wi-Fi</string>
+    <string name="dispatch_hotspot_failed">Не удалось переключить точку доступа Wi-Fi</string>
+    <string name="dispatch_screen_invalid_state">Некорректное состояние экрана</string>
+    <string name="dispatch_screen_not_available">На этой машине управление экраном недоступно</string>
+    <string name="dispatch_cluster_invalid_state">Некорректное состояние проекции на приборку</string>
+    <string name="dispatch_cluster_daemon_restarting">служебный процесс перезапускается</string>
+    <string name="dispatch_cluster_not_on">проекция на приборку не включилась</string>
+    <string name="dispatch_cluster_not_off">проекция с приборки не убралась</string>
+    <string name="dispatch_speak_text_missing">не задан текст</string>
+    <string name="dispatch_agent_query_prompt_missing">не задан запрос</string>
+    <string name="dispatch_payload_missing">payload не задан</string>
+    <string name="dispatch_split_narrow_missing">narrow не задан</string>
+    <string name="dispatch_split_wide_missing">wide не задан</string>
+    <string name="dispatch_split_invalid_side">неверная сторона</string>
+    <string name="dispatch_split_pair_not_saved">пара для разделения экрана не сохранена</string>
+    <string name="dispatch_delay_missing">Длительность паузы не задана</string>
+    <string name="dispatch_delay_out_of_range">Длительность паузы вне диапазона (0..%1$d мс)</string>
+    <string name="dispatch_volume_missing">Уровень громкости не задан</string>
+    <string name="dispatch_audio_unavailable">AudioManager недоступен</string>
+    <string name="dispatch_volume_invalid">Некорректный уровень громкости: %1$s</string>
+    <string name="dispatch_package_missing">packageName не задан</string>
+    <string name="dispatch_app_not_installed">Приложение не установлено: %1$s</string>
+    <string name="dispatch_app_close_self">BYDMate не закрывает сам себя</string>
+    <string name="dispatch_app_close_failed">Не удалось закрыть приложение: %1$s</string>
+    <string name="dispatch_media_no_session">Нет запущенного плеера</string>
+    <string name="dispatch_media_key_invalid">Неизвестная команда плеера</string>
+    <string name="dispatch_media_key_failed">Плеер не принял команду: %1$s</string>
+    <string name="dispatch_phone_missing">phone не задан</string>
+    <string name="dispatch_dgis_fallback">2ГИС не установлен, открыт Яндекс Навигатор</string>
+    <string name="dispatch_maps_fallback">Яндекс Карты не установлены, открыт Яндекс Навигатор</string>
+    <string name="dispatch_waze_fallback">Waze не установлен, открыт Яндекс Навигатор</string>
+    <string name="dispatch_shortcut_unknown">неизвестный shortcut: %1$s</string>
+    <string name="dispatch_coords_missing">lat/lon не заданы</string>
+    <string name="dispatch_url_missing">url не задан</string>
+    <string name="dispatch_query_missing">query не задан</string>
+    <string name="dispatch_yandex_music_mode_unknown">Неизвестный режим Я.Музыки: %1$s</string>
+    <string name="dispatch_youtube_not_installed">Приложение YouTube не установлено</string>
+    <string name="dispatch_youtube_mode_unknown">Неизвестный режим YouTube: %1$s</string>
+    <string name="dispatch_no_handler_app">Нет приложения для обработки: %1$s</string>
+    <string name="dispatch_no_permission">Нет разрешения: %1$s</string>
+    <string name="window_pane_driver">окно водителя</string>
+    <string name="window_pane_passenger">окно пассажира</string>
+    <string name="window_pane_rear_left">заднее левое окно</string>
+    <string name="window_pane_rear_right">заднее правое окно</string>
+    <string name="window_pane_other">стекло</string>
+    <string name="window_stuck_one">%1$s не сдвинулось с места, команда не сработала</string>
+    <string name="window_stuck_many">не сдвинулись с места: %1$s</string>
+    <string name="dispatch_navigate_split_not_restored">сплит не восстановлен: %1$s</string>
+    <string name="dispatch_navigate_split_restored">%1$s, сплит восстановлен</string>
+    <string name="dispatch_navigate_route_built">маршрут построен, сплит восстановлен</string>
+    <string name="dispatch_navigate_a11y_off">не удалось проверить маршрут: служба специальных возможностей выключена</string>
+    <string name="dispatch_navigate_stale_route">на экране уже был маршрут, новый не отличить: нажмите Поехали сами</string>
+    <string name="dispatch_navigate_go_not_found">кнопка Поехали не найдена за %1$d с</string>
+    <string name="dispatch_navigate_go_click_failed">не получилось нажать Поехали</string>
+    <string name="dispatch_navigate_go_no_guidance">нажал Поехали, но ведение не началось</string>
+    <string name="dispatch_voice_assistant_off">голосовой помощник выключен в настройках</string>
+    <string name="dispatch_voice_tts_off">озвучка ответов выключена в настройках</string>
+    <string name="dispatch_voice_session_active">идёт голосовая сессия, действие пропущено</string>
+    <string name="dispatch_voice_busy">другое голосовое действие ещё выполняется</string>
+    <string name="dispatch_voice_speak_timeout">озвучка прервана по таймауту</string>
+    <string name="dispatch_voice_speak_failed">озвучка не запустилась</string>
+    <string name="dispatch_agent_query_cooldown">запрос агенту не чаще раза в %1$d секунд</string>
+    <string name="dispatch_agent_timeout">агент не ответил вовремя</string>
+    <string name="dispatch_agent_off">агент выключен в настройках</string>
+    <!-- Telegram reports (3.19) -->
+    <string name="tg_report_field_location">Место на карте</string>
+    <string name="tg_report_field_soc">Заряд</string>
+    <string name="tg_report_field_range">Запас хода</string>
+    <string name="tg_report_field_odometer">Пробег</string>
+    <string name="tg_report_field_trip">Поездка</string>
+    <string name="tg_report_field_temps">Температура</string>
+    <string name="tg_report_field_openings">Что открыто</string>
+    <string name="tg_report_field_tires">Давление в шинах</string>
+    <string name="tg_report_header_off">BYDMate: машина выключена в %1$s</string>
+    <string name="tg_report_map_link">Открыть на карте</string>
+    <string name="tg_report_soc">заряд %1$s</string>
+    <string name="tg_report_soc_value">%1$d%%</string>
+    <string name="tg_report_range">запас %1$s</string>
+    <string name="tg_report_trip_now">Поездка</string>
+    <string name="tg_report_trip_last">Последняя поездка</string>
+    <string name="tg_report_trip_when">%1$s в %2$s</string>
+    <string name="tg_report_counter_since">с %1$s</string>
+    <string name="tg_report_trip_distance_time">%1$s за %2$s</string>
+    <string name="tg_report_trip_km">%1$.1f км</string>
+    <string name="tg_report_trip_km_whole">%1$d км</string>
+    <string name="tg_report_odometer">Пробег %1$,d км</string>
+    <string name="tg_report_trip_consumption">Расход %1$.1f кВт·ч/100 км</string>
+    <string name="tg_report_temp_outside">снаружи %1$+d°</string>
+    <string name="tg_report_temp_inside">в салоне %1$+d°</string>
+    <string name="tg_report_open_list">Открыто: %1$s</string>
+    <string name="tg_report_all_closed">Всё закрыто</string>
+    <string name="tg_report_open_door_fl">дверь водителя</string>
+    <string name="tg_report_open_door_fr">дверь пассажира</string>
+    <string name="tg_report_open_door_rl">задняя левая дверь</string>
+    <string name="tg_report_open_door_rr">задняя правая дверь</string>
+    <string name="tg_report_open_sunroof">люк</string>
+    <string name="tg_report_open_trunk">багажник</string>
+    <string name="tg_report_open_front_trunk">передний багажник</string>
+    <string name="tg_report_open_hood">капот</string>
+    <string name="tg_report_tires">Шины: %1$s бар</string>
+    <string name="tg_report_tire_fl">ПЛ %1$s</string>
+    <string name="tg_report_tire_fr">ПП %1$s</string>
+    <string name="tg_report_tire_rl">ЗЛ %1$s</string>
+    <string name="tg_report_tire_rr">ЗП %1$s</string>
+    <string name="tg_report_recorded_at">(записано в %1$s)</string>
+    <string name="dispatch_tg_report_queued">Нет связи, отчёт уйдёт, когда появится интернет</string>
+    <string name="dispatch_tg_report_no_bot">Подключите бота в Настройках</string>
+    <string name="auto_msg_tg_report_empty">Действие #%1$d: выберите хотя бы один пункт отчёта или напишите свой текст</string>
+    <string name="automation_action_tg_report">Отчёт в Telegram</string>
+    <!-- Telegram reports (3.19): settings and automation editor -->
+    <string name="tg_report_field_location_desc">Ссылка «Открыть на карте»</string>
+    <string name="tg_report_field_soc_desc">Процент батареи</string>
+    <string name="tg_report_field_range_desc">Километры, как на Главной</string>
+    <string name="tg_report_field_odometer_desc">Общий пробег машины</string>
+    <string name="tg_report_field_trip_desc">Километры, расход и время в пути</string>
+    <string name="tg_report_field_trip1_desc">Счётчик TRIP 1 с Главной: километры, время в пути и расход</string>
+    <string name="tg_report_field_trip2_desc">Счётчик TRIP 2 с Главной: километры, время в пути и расход</string>
+    <string name="tg_report_field_temps_desc">Снаружи и в салоне</string>
+    <string name="tg_report_field_openings_desc">Двери, окна, люк, багажник, капот</string>
+    <string name="tg_report_field_tires_desc">Все четыре колеса</string>
+    <string name="settings_tg_report_off_title">Отчёт при выключении машины</string>
+    <string name="settings_tg_report_off_hint">Отчёт уходит в первые секунды после выключения через мобильный интернет машины. Если связи нет, он придёт при следующем включении.</string>
+    <string name="settings_tg_report_off_no_bot">Сначала подключите Telegram-бот выше.</string>
+    <string name="settings_tg_report_off_connect">Подключить</string>
+    <string name="settings_tg_report_items_label">Что попадает в отчёт</string>
+    <string name="automation_action_tg_report_add">Отправить отчёт в Telegram</string>
+    <string name="automation_tg_report_text_label">Свой текст (опционально)</string>
+    <string name="automation_tg_report_text_hint">Появится под заголовком сообщения.</string>
+    <string name="automation_tg_report_own_text">свой текст</string>
+    <string name="automation_tg_report_no_bot">Telegram-бот не подключён. Подключите его в Настройках, раздел «Сервис и данные».</string>
+    <!-- Automation audit 3.19: journal reasons, write errors, new conditions -->
+    <string name="auto_log_confirm_cancelled">Отменено в окне подтверждения</string>
+    <string name="auto_log_confirm_timeout">Нет ответа в окне подтверждения, не выполнено</string>
+    <string name="auto_log_park_required">Не выполнено: правило только на парковке, а передача не P</string>
+    <string name="auto_log_one_shot_expired">Разовое правило не сработало за сутки и выключено</string>
+    <string name="auto_err_not_confirmed">Машина не подтвердила команду</string>
+    <string name="auto_err_not_supported">Эта команда не поддерживается</string>
+    <string name="auto_err_out_of_range">Недопустимое значение для команды</string>
+    <string name="auto_err_unreachable">Команда не дошла до машины</string>
+    <string name="auto_err_not_done">Машина не выполнила команду</string>
+    <string name="auto_err_unverified">Команда не проверена на этой машине и не сработала</string>
+    <string name="auto_err_failed">Не удалось выполнить команду</string>
+    <string name="auto_enum_moving_m">В движении</string>
+    <string name="auto_enum_code_sand">Песок</string>
+    <string name="auto_enum_code_mud">Грязь</string>
+    <string name="auto_enum_code_mountain">Горы</string>
+    <string name="auto_enum_code_smart">Умный</string>
+    <string name="auto_param_seatbeltrl">Ремень сзади слева</string>
+    <string name="auto_param_seatbeltrm">Ремень сзади в центре</string>
+    <string name="auto_param_seatbeltrr">Ремень сзади справа</string>
+    <string name="auto_param_rangekm">Запас хода</string>
+    <string name="auto_unit_km">км</string>
+    <!-- Automation tab redesign 3.19: card phrase, status, journal, editor -->
+    <string name="auto_ui_phrase_rule">%1$s: %2$s</string>
+    <string name="auto_ui_phrase_and">%1$s и %2$s</string>
+    <string name="auto_ui_phrase_and_comma">%1$s, и %2$s</string>
+    <string name="auto_ui_phrase_or">%1$s или %2$s</string>
+    <string name="auto_ui_phrase_or_comma">%1$s, или %2$s</string>
+    <string name="auto_ui_phrase_list">%1$s, %2$s</string>
+    <string name="auto_ui_phrase_is">%1$s %2$s</string>
+    <string name="auto_ui_phrase_is_not">%1$s не %2$s</string>
+    <string name="auto_ui_phrase_compare">%1$s %2$s %3$s</string>
+    <string name="auto_ui_op_gt">больше</string>
+    <string name="auto_ui_op_lt">меньше</string>
+    <string name="auto_ui_op_ge">не меньше</string>
+    <string name="auto_ui_op_le">не больше</string>
+    <string name="auto_ui_op_eq">равно</string>
+    <string name="auto_ui_op_ne">не равно</string>
+    <string name="auto_ui_phrase_place_exit">Выезд из «%1$s»</string>
+    <string name="auto_ui_phrase_at">В %1$s</string>
+    <string name="auto_ui_phrase_between">С %1$s до %2$s</string>
+    <string name="auto_ui_phrase_days">%1$s %2$s</string>
+    <string name="auto_ui_days_weekdays">По будням</string>
+    <string name="auto_ui_days_weekends">По выходным</string>
+    <string name="auto_ui_phrase_button">Кнопка %1$d на виджете</string>
+    <string name="auto_ui_phrase_steering">Клавиша руля «%1$s»</string>
+    <string name="auto_ui_phrase_steering_none">Клавиша руля не назначена</string>
+    <string name="auto_ui_phrase_voice">Голосом «%1$s»</string>
+    <string name="auto_ui_phrase_once">%1$s, один раз</string>
+    <string name="auto_ui_act_toggle">%1$s, переключить</string>
+    <string name="auto_ui_act_with">%1$s, %2$s</string>
+    <string name="auto_ui_act_wait">Подождать %1$s</string>
+    <string name="auto_ui_act_quoted">%1$s «%2$s»</string>
+    <string name="auto_ui_act_volume">%1$s %2$d</string>
+    <string name="auto_ui_seconds">%1$s с</string>
+    <string name="auto_ui_minutes">%1$s мин</string>
+    <string name="auto_ui_when_today">Сегодня в %1$s</string>
+    <string name="auto_ui_when_yesterday">Вчера в %1$s</string>
+    <string name="auto_ui_when_tomorrow">Завтра в %1$s</string>
+    <string name="auto_ui_when_date">%1$s в %2$s</string>
+    <string name="auto_ui_date_pattern">d MMMM</string>
+    <string name="auto_ui_date_year_pattern">d MMMM yyyy</string>
+    <string name="auto_ui_date_chip_pattern">EEE, d MMMM</string>
+    <string name="auto_ui_status_ok">Сработало %1$s</string>
+    <string name="auto_ui_status_cancelled">Отменено %1$s</string>
+    <string name="auto_ui_status_skipped">Не выполнено %1$s</string>
+    <string name="auto_ui_status_error">Ошибка %1$s</string>
+    <string name="auto_ui_status_never">Ещё не срабатывало</string>
+    <string name="auto_ui_status_planned">Сработает %1$s</string>
+    <string name="auto_ui_card_copy">Копия</string>
+    <string name="auto_ui_card_share">Отправить</string>
+    <string name="auto_ui_journal_rule_title">Журнал правила «%1$s»</string>
+    <string name="auto_ui_journal_done">Выполнено</string>
+    <string name="auto_ui_journal_done_off">Выполнено, правило выключено</string>
+    <string name="auto_ui_journal_error">Ошибка</string>
+    <string name="auto_ui_journal_cancelled">Отменено</string>
+    <string name="auto_ui_journal_skipped">Не выполнено</string>
+    <string name="auto_ui_journal_expired">Не выполнено, правило выключено</string>
+    <string name="auto_ui_journal_one_shot">Разовое правило</string>
+    <string name="auto_ui_journal_step_failed">%1$s не выполнено</string>
+    <string name="auto_ui_logic_all">Все условия</string>
+    <string name="auto_ui_logic_any">Любое условие</string>
+    <string name="auto_ui_pick_param">Выберите, что проверять</string>
+    <string name="auto_ui_pick_value">Выберите</string>
+    <string name="auto_ui_number_hint">Введите число, например 12,5</string>
+    <string name="auto_ui_cooldown">Не чаще, чем раз в</string>
+    <string name="auto_ui_unit_s">с</string>
+    <string name="auto_ui_wait">Подождать</string>
+    <string name="auto_ui_miss_name">Введите название</string>
+    <string name="auto_ui_miss_conditions">Добавьте условие</string>
+    <string name="auto_ui_miss_param">Выберите, что проверять в условии %1$d</string>
+    <string name="auto_ui_miss_value">Выберите значение в условии %1$d</string>
+    <string name="auto_ui_miss_operator">Выберите «равно» или «не равно» в условии %1$d</string>
+    <string name="auto_ui_miss_number">Введите число в условии %1$d</string>
+    <string name="auto_ui_miss_key">Назначьте клавишу руля в условии %1$d</string>
+    <string name="auto_ui_miss_actions">Добавьте действие</string>
+    <string name="auto_ui_miss_two">%1$s и %2$s</string>
+    <string name="auto_ui_miss_more">%1$s и ещё %2$d</string>
+    <string name="auto_ui_err_one_shot_invalid">Выберите дату и время разового условия</string>
+    <string name="auto_ui_err_one_shot_or">Разовое условие работает только с «Все условия»</string>
+    <string name="auto_ui_err_one_shot_event">Разовое условие сочетается только с параметрами машины</string>
+    <string name="auto_ui_err_one_shot_twice">В правиле может быть только одно разовое условие</string>
+    <string name="auto_ui_event_warn">%1$s запускает правило сразу. Другие условия при этом не проверяются.</string>
+    <string name="auto_ui_event_warn_hint">Чтобы их учитывать, сделайте для них отдельное правило.</string>
+    <string name="auto_ui_event_button">Кнопка на виджете</string>
+    <string name="auto_ui_event_key">Клавиша руля</string>
+    <string name="auto_ui_event_voice">Голосовая команда</string>
+    <string name="auto_ui_unsaved_title">Сохранить изменения?</string>
+    <string name="auto_ui_unsaved_text">Если выйти без сохранения, правки пропадут.</string>
+    <string name="auto_ui_unsaved_discard">Не сохранять</string>
+    <string name="auto_ui_trigger_once">Один раз: дата и время</string>
+    <string name="auto_ui_once_hint">Выполнится один раз и выключится само.</string>
+    <string name="auto_ui_once_at">в</string>
+    <string name="auto_ui_add_action_title">Добавить действие</string>
+    <string name="auto_ui_section_messages">Сообщения</string>
+    <string name="auto_ui_section_apps">Приложения</string>
+    <string name="auto_ui_section_screen">Экран</string>
+    <string name="auto_ui_section_system">Система</string>
+    <string name="auto_ui_limit">Можно создать не больше %1$d правил. Удалите ненужное, чтобы добавить новое.</string>
+    <string name="auto_ui_test_park">Не выполнено: правило работает только на парковке. Включите P.</string>
+    <string name="auto_ui_confirm_rule">Правило «%1$s»</string>
+    <string name="auto_ui_confirm_countdown">Отменится через %1$d с</string>
+    <!-- DM-i hybrid (#184) -->
+    <string name="dashboard_range_label_battery">на батарее</string>
+    <string name="dashboard_fuel_tank">бак</string>
+    <string name="dashboard_fuel_range">на топливе</string>
+    <string name="dashboard_fuel_popup_tank">Бак</string>
+    <string name="dashboard_fuel_popup_fuel_range">Запас хода на топливе</string>
+    <string name="dashboard_fuel_popup_ev_range">Запас хода на батарее</string>
+    <string name="dashboard_fuel_popup_engine_rpm">Обороты ДВС</string>
+    <string name="dashboard_fuel_rpm_value">%1$d об/мин</string>
+    <string name="dashboard_fuel_engine_off">ДВС выключен</string>
+    <string name="dashboard_fuel_popup_mileage_hev">Пробег на ДВС</string>
+    <string name="dashboard_fuel_popup_mileage_ev">Пробег на батарее</string>
+    <string name="dashboard_fuel_popup_fuel_total">Топлива за всё время</string>
+    <string name="dashboard_fuel_popup_price">Цена литра</string>
+    <string name="dashboard_fuel_price_edit">изменить</string>
+    <string name="dashboard_fuel_footer">Данные машины</string>
+    <string name="dashboard_fuel_percent_value">%1$d %%</string>
+    <string name="dashboard_fuel_liters_value">%1$.1f л</string>
+    <string name="dashboard_unit_liters">л</string>
+    <string name="dashboard_distance_hev_subtitle">%1$s · ДВС %2$.1f км</string>
+    <string name="dashboard_energy_fuel_subtitle">+ %1$.1f л</string>
+    <string name="dashboard_consumption_fuel_value">%1$.1f л/100</string>
+    <string name="dashboard_consumption_elec_subtitle">%1$.1f кВт·ч/100 · на все км</string>
+    <string name="dashboard_cost_split_subtitle">%1$.2f эл. + %2$.2f топл.</string>
+    <string name="trip_detail_fuel_label">Топливо</string>
+    <string name="trip_detail_hev_ev_label">На ДВС / на батарее</string>
+    <string name="trip_detail_hev_ev_value">%1$.0f / %2$.0f км</string>
+    <string name="trip_detail_fuel_cost_label">Стоимость топлива</string>
+    <string name="tech_label_engine_rpm">обороты ДВС</string>
+    <string name="tech_card_fuel">Топливо</string>
+    <string name="settings_fuel_price_label">Цена литра</string>
+    <string name="settings_fuel_price_hint">за литр, на поездки с этой даты</string>
+</resources>
