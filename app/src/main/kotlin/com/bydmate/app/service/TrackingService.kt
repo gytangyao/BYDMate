@@ -218,7 +218,16 @@ class TrackingService : Service(), LocationListener {
     // allocates a fresh PendingIntent + Builder each call).
     private var lastNotificationText: String? = null
     // Cooldown bookkeeping for the helper-daemon watchdog respawn — see shouldAttemptRespawn().
-    private var lastHelperRespawnAtMs: Long = 0L
+    // Written by the tick and by the sampling watchdog, on Dispatchers.IO.
+    @Volatile private var lastHelperRespawnAtMs: Long = 0L
+    // One respawn at a time across those two callers — see runHelperHealthCheck().
+    private val helperRespawnInFlight = java.util.concurrent.atomic.AtomicBoolean(false)
+    // When the current tick pipeline began. The stall watchdog needs a clock that starts with the
+    // pipeline, not with the first snapshot: a source that never produces one has no
+    // lastDataAtMs to age, and the process that is broken from its very first tick is the one
+    // nobody would otherwise ever restart (head-unit incident 2026-10-28 — wireless debugging
+    // came back off, so autoservice never answered and no snapshot ever landed).
+    @Volatile private var samplingStartedAtMs: Long = 0L
     // Prevents two pollGunStateForEdge coroutines from running concurrently.
     // Without this guard a slow autoservice read could overlap with the next
     // tick's launch, and both copies might observe the same connected→NONE
@@ -1904,6 +1913,7 @@ class TrackingService : Service(), LocationListener {
      */
     @Synchronized
     private fun startTickPipeline() {
+        samplingStartedAtMs = System.currentTimeMillis()
         ticksJob?.cancel()
         ticksJob = serviceScope.launch {
             // Automation actions and the foreground notification are the tick consumers that
@@ -2016,45 +2026,8 @@ class TrackingService : Service(), LocationListener {
 
                     // Helper daemon watchdog: detects a mid-session daemon death (OOM-killed,
                     // crashed, or manually killed) that would otherwise leave the write channel
-                    // dead for the rest of the trip. isHealthy() is a cheap binder ping, safe to
-                    // call inline on the tick — it only detects the failure, it does not reconnect.
-                    // ensureRunning() does the actual respawn and is expensive, so it always runs
-                    // off-tick via launch (wrapped in runCatching — serviceScope has no
-                    // CoroutineExceptionHandler), cooldown-gated against HELPER_RESPAWN_COOLDOWN_MS.
-                    if (pollTickCount % HELPER_HEALTH_CHECK_EVERY_N_TICKS == 0L) {
-                        // Pinged once: the verdict reads a healthy tick, a dead one goes to respawn.
-                        // The verdict recompute is launched off-tick: it reads the ADB socket state,
-                        // which shares a lock with a connect that can wait up to 60 s for auth.
-                        val healthy = helperBootstrap.isHealthy()
-                        if (healthy) {
-                            serviceScope.launch { runCatching { adbVerdictMonitor.recompute() } }
-                        } else {
-                            val now = System.currentTimeMillis()
-                            if (!shouldAttemptRespawn(now, lastHelperRespawnAtMs)) {
-                                // No respawn in flight here, so no HELPER_DOWN flicker: refresh a stale OK.
-                                serviceScope.launch { runCatching { adbVerdictMonitor.recompute() } }
-                            } else {
-                                lastHelperRespawnAtMs = now
-                                Log.w(TAG, "Helper daemon unhealthy, attempting respawn")
-                                serviceScope.launch {
-                                    val respawned = runCatching { helperBootstrap.ensureRunning() }
-                                        .onFailure { Log.w(TAG, "Helper respawn failed: ${it.message}") }
-                                        .getOrDefault(false)
-                                    // Trigger 3: either verdict is a reason to check the restore state.
-                                    // A daemon that just came back means the classic port is alive right
-                                    // now — the one window a self-grant of WRITE_SECURE_SETTINGS can use
-                                    // (see AdbRestoreManager.attemptLocked). A daemon that will not come
-                                    // back usually means the ADB channel under it is gone (port closed by
-                                    // a reboot).
-                                    adbRestoreManager.attemptIfNeeded(if (respawned) "helper_respawned" else "watchdog")
-                                    // A daemon that just came back is also the first chance to read
-                                    // the fid catalog when it was unreachable at startup.
-                                    if (respawned) resolveFidCatalog()
-                                    adbVerdictMonitor.recompute()
-                                }
-                            }
-                        }
-                    }
+                    // dead for the rest of the trip.
+                    if (pollTickCount % HELPER_HEALTH_CHECK_EVERY_N_TICKS == 0L) runHelperHealthCheck()
 
                     // On first data after startup: detect offline charging
                     if (!firstDataReceived) {
@@ -2169,20 +2142,85 @@ class TrackingService : Service(), LocationListener {
     private data class TickWork(val data: DiParsData, val sessionId: Long?)
 
     /**
+     * Ping the helper daemon and bring it back if it died mid-session.
+     *
+     * isHealthy() is a cheap binder ping, safe to call inline on the caller's coroutine — it only
+     * detects the failure, it does not reconnect. ensureRunning() does the actual respawn, is
+     * expensive, and is cooldown-gated against [HELPER_RESPAWN_COOLDOWN_MS], so it always runs off
+     * the caller via launch (wrapped in runCatching — [serviceScope] has no
+     * CoroutineExceptionHandler).
+     *
+     * Two callers, deliberately: the tick loop (every [HELPER_HEALTH_CHECK_EVERY_N_TICKS] samples)
+     * and the sampling watchdog (every [POLL_WATCHDOG_INTERVAL_MS]). The tick is the fast path while
+     * data flows; the watchdog is the only one that keeps running when it does not, which is exactly
+     * when a dead daemon needs someone to notice.
+     */
+    private suspend fun runHelperHealthCheck() {
+        // Pinged once: the verdict reads a healthy tick, a dead one goes to respawn.
+        // The verdict recompute is launched off-tick: it reads the ADB socket state,
+        // which shares a lock with a connect that can wait up to 60 s for auth.
+        val healthy = helperBootstrap.isHealthy()
+        if (healthy) {
+            serviceScope.launch { runCatching { adbVerdictMonitor.recompute() } }
+            return
+        }
+        val now = System.currentTimeMillis()
+        if (!shouldAttemptRespawn(now, lastHelperRespawnAtMs)) {
+            // No respawn in flight here, so no HELPER_DOWN flicker: refresh a stale OK.
+            serviceScope.launch { runCatching { adbVerdictMonitor.recompute() } }
+            return
+        }
+        // The tick and the watchdog check the same daemon a minute apart; one respawn at a time,
+        // so a death seen by both cannot start two kill rounds against the same socket.
+        if (!helperRespawnInFlight.compareAndSet(false, true)) return
+        lastHelperRespawnAtMs = now
+        Log.w(TAG, "Helper daemon unhealthy, attempting respawn")
+        serviceScope.launch {
+            try {
+                val respawned = runCatching { helperBootstrap.ensureRunning() }
+                    .onFailure { Log.w(TAG, "Helper respawn failed: ${it.message}") }
+                    .getOrDefault(false)
+                // Trigger 3: either verdict is a reason to check the restore state.
+                // A daemon that just came back means the classic port is alive right
+                // now — the one window a self-grant of WRITE_SECURE_SETTINGS can use
+                // (see AdbRestoreManager.attemptLocked). A daemon that will not come
+                // back usually means the ADB channel under it is gone (port closed by
+                // a reboot).
+                adbRestoreManager.attemptIfNeeded(if (respawned) "helper_respawned" else "watchdog")
+                // A daemon that just came back is also the first chance to read
+                // the fid catalog when it was unreachable at startup.
+                if (respawned) resolveFidCatalog()
+                adbVerdictMonitor.recompute()
+            } finally {
+                helperRespawnInFlight.set(false)
+            }
+        }
+    }
+
+    /**
      * Rebuilds the tick pipeline when snapshots stop reaching its consumers. The sampler can be
      * wedged in an uninterruptible Binder call and a consumer can be stuck on a singleton lock;
      * neither shows up as a dead job, so liveness is measured by the last consumed snapshot.
+     *
+     * Runs off the samples, on a fixed minute: a pipeline that never produced a first snapshot is
+     * the case that used to be invisible (a source dead from boot writes no snapshot, so there was
+     * nothing to age), and it is the case where the daemon respawn cannot wait for tick 30 either.
      */
     private fun startSamplingWatchdog() {
         if (samplingWatchdogJob?.isActive == true) return
         samplingWatchdogJob = serviceScope.launch {
             while (isActive) {
                 delay(POLL_WATCHDOG_INTERVAL_MS)
+                runHelperHealthCheck()
                 val last = lastDataAtMs
-                if (last == 0L) continue
-                val age = System.currentTimeMillis() - last
+                // Either clock works: a process that sampled once ages from its last snapshot, one
+                // that never did ages from the pipeline that was supposed to produce it.
+                val since = if (last != 0L) last else samplingStartedAtMs
+                if (since == 0L) continue
+                val age = System.currentTimeMillis() - since
                 if (age < POLL_STALL_RESTART_MS) continue
-                Log.w(TAG, "Poll pipeline stalled for ${age / 1000}s — restarting sampling")
+                Log.w(TAG, "Poll pipeline stalled for ${age / 1000}s" +
+                    (if (last == 0L) " (no snapshot yet)" else "") + " — restarting sampling")
                 ticksJob?.cancel()
                 sharedAdaptiveLoop.stop()
                 delay(200)
