@@ -85,6 +85,15 @@
     <string name="settings_cluster_music_card_title">Трек на приборке</string>
     <string name="settings_cluster_music_card_desc">Показывает название и исполнителя в карточке музыки на приборке для плееров, которые штатная прошивка пропускает: Яндекс Навигатор (Алиса), Яндекс Музыка, Spotify, интернет-радио и другие. Свои плееры и Bluetooth прошивка заполняет сама.</string>
 
+    <!-- Lyrics pushed to a second screen over the LAN -->
+    <string name="settings_lyrics_display_title">Тексты на отдельном экране</string>
+    <string name="settings_lyrics_display_desc">Находит текст играющего трека в NetEase Music и QQ Music и передаёт его на второй экран по локальной сети: приложение-экран подключается к этому порту и получает название, текст и позицию. Работает с любым плеером, включая музыку по Bluetooth с телефона.</string>
+    <string name="settings_lyrics_display_port_label">Порт</string>
+    <string name="settings_lyrics_display_status">Укажите на экране: %1$s · подключено: %2$d (%3$s)</string>
+    <string name="settings_lyrics_display_access_title">Доступ к уведомлениям</string>
+    <string name="settings_lyrics_display_access_desc">Без него не видна ни одна сессия плеера, и экран показывает, что играть нечего. На машине доступ выдаёт helper-демон; на любом другом устройстве включите его сами.</string>
+    <string name="settings_lyrics_display_access_action">Включить</string>
+
     <!-- ADB restore after reboot (firmwares 2606+) -->
     <string name="settings_adb_restore_title">Восстанавливать ADB после перезагрузки</string>
     <string name="settings_adb_restore_desc">Для прошивок, где ADB выключается при каждой перезагрузке. Нужен включённый Wi-Fi.</string>

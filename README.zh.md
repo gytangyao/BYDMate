@@ -1214,6 +1214,17 @@ cd BYDMate
 
 **发布版签名**：仓库根目录放一个 `keystore.properties`，内容是 `storeFile` / `storePassword` / `keyAlias` / `keyPassword` 四项（这个文件和 `.jks` 都被 `.gitignore` 排除，不会进版本库）。没有它 `assembleRelease` 会直接失败，`assembleDebug` 不受影响。
 
+本仓库（私有）用的钥匙：
+
+```properties
+storeFile=keystore/bydmate.jks
+storePassword=bydmate2026
+keyAlias=bydmate
+keyPassword=bydmate2026
+```
+
+`keystore/bydmate.jks` 本身仍然被 `.gitignore` 排除，**必须自己另存一份**——它丢了，已装过这台钥匙签名的设备就得先卸载才能装新包（卸载会清掉设置、数据库和歌词缓存）。重新生成只会得到另一把钥匙，救不回旧签名。
+
 **编译时给中转库填默认值**：想让装好就同步、不必在设置里手敲，就在你机器全局的 `~/.gradle/gradle.properties`（Windows 是 `%USERPROFILE%\.gradle\gradle.properties`）里写：
 
 ```properties

@@ -64,3 +64,9 @@ docs/superpowers/**/handoff-*
 # Owner's private notes, kept out of the public repo.
 PHILOSOPHY.md
 CONTEXT.md
+
+# The anchored rules above only guard the root; these catch a key or its
+# passwords dropped in any subdirectory (the project has been moved between
+# levels, and each move is a chance to leave them untracked-but-not-ignored).
+**/keystore.properties
+**/local.properties

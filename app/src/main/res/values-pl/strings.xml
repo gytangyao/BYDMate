@@ -85,6 +85,15 @@
     <string name="settings_cluster_music_card_title">Utwór na zegarach</string>
     <string name="settings_cluster_music_card_desc">Pokazuje tytuł i wykonawcę na karcie muzyki na zegarach dla odtwarzaczy, które fabryczne oprogramowanie pomija: Yandex Navigator (Alice), Yandex Music, Spotify, radio internetowe i inne. Własne odtwarzacze i Bluetooth oprogramowanie wypełnia samo.</string>
 
+    <!-- Lyrics pushed to a second screen over the LAN -->
+    <string name="settings_lyrics_display_title">Tekst na osobnym ekranie</string>
+    <string name="settings_lyrics_display_desc">Znajduje tekst odtwarzanego utworu w NetEase Music i QQ Music i wysyła go na drugi ekran przez sieć lokalną: aplikacja-ekran łączy się z tym portem i otrzymuje tytuł, tekst oraz pozycję. Działa z każdym odtwarzaczem, także z muzyką przez Bluetooth z telefonu.</string>
+    <string name="settings_lyrics_display_port_label">Port</string>
+    <string name="settings_lyrics_display_status">Wpisz na ekranie: %1$s · połączone: %2$d (%3$s)</string>
+    <string name="settings_lyrics_display_access_title">Dostęp do powiadomień</string>
+    <string name="settings_lyrics_display_access_desc">Bez niego nie widać żadnej sesji odtwarzacza, więc ekran pokazuje, że nic nie gra. W samochodzie uprawnienie nadaje demon helper; na każdym innym urządzeniu włącz je ręcznie.</string>
+    <string name="settings_lyrics_display_access_action">Włącz</string>
+
     <!-- ADB restore after reboot (firmwares 2606+) -->
     <string name="settings_adb_restore_title">Przywracaj ADB po restarcie</string>
     <string name="settings_adb_restore_desc">Dla oprogramowania, w którym ADB wyłącza się przy każdym restarcie. Wymagane włączone Wi-Fi.</string>

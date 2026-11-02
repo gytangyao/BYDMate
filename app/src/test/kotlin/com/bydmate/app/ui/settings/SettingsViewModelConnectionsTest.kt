@@ -326,6 +326,7 @@ class SettingsViewModelConnectionsTest {
             ),
             telegramReporter = mockk(relaxed = true),
             clusterMusicBridge = mockk(relaxed = true),
+            lyricsDisplayEngine = mockk(relaxed = true),
             vehicleWriteLogDao = mockk(relaxed = true),
             vehicleKindMonitor = mockk(relaxed = true),
             mysqlSyncRepository = mockk(relaxed = true),

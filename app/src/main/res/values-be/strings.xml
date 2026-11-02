@@ -85,6 +85,15 @@
     <string name="settings_cluster_music_card_title">Трэк на прыборцы</string>
     <string name="settings_cluster_music_card_desc">Паказвае назву і выканаўцу ў картцы музыкі на прыборцы для плэераў, якія штатная прашыўка прапускае: Яндэкс Навігатар (Аліса), Яндэкс Музыка, Spotify, інтэрнэт-радыё і іншыя. Свае плэеры і Bluetooth прашыўка запаўняе сама.</string>
 
+    <!-- Lyrics pushed to a second screen over the LAN -->
+    <string name="settings_lyrics_display_title">Тэксты на асобным экране</string>
+    <string name="settings_lyrics_display_desc">Знаходзіць тэкст трэка, які гуляе, у NetEase Music і QQ Music і перасылае яго на другі экран па лакальнай сетцы: прыкладанне-экран падключаецца да гэтага порта і атрымлівае назву, тэкст і пазіцыю. Працуе з любым плэерам, у тым ліку з музыкай па Bluetooth з тэлефона.</string>
+    <string name="settings_lyrics_display_port_label">Порт</string>
+    <string name="settings_lyrics_display_status">Укажыце на экране: %1$s · падлучана: %2$d (%3$s)</string>
+    <string name="settings_lyrics_display_access_title">Даступ да апавяшчэнняў</string>
+    <string name="settings_lyrics_display_access_desc">Без яго не бачна ніводнай сесіі плэера, і экран паказвае, што граць няма чаго. На галоўнай прыстаўцы доступ выдае helper-дэман; на любой іншай прыладзе ўключыце яго самі.</string>
+    <string name="settings_lyrics_display_access_action">Уключыць</string>
+
     <!-- ADB restore after reboot (firmwares 2606+) -->
     <string name="settings_adb_restore_title">Аднаўляць ADB пасля перазагрузкі</string>
     <string name="settings_adb_restore_desc">Для прашывак, дзе ADB выключаецца пры кожнай перазагрузцы. Патрэбны ўключаны Wi-Fi.</string>

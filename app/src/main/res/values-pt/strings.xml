@@ -82,6 +82,15 @@
     <string name="settings_cluster_music_card_title">Faixa no painel</string>
     <string name="settings_cluster_music_card_desc">Mostra o título e o artista no cartão de música do painel de instrumentos para os reprodutores que o firmware de fábrica ignora: Yandex Navigator (Alice), Yandex Music, Spotify, rádio pela internet e outros. Para os próprios reprodutores e o Bluetooth, o firmware preenche-o sozinho.</string>
 
+    <!-- Lyrics pushed to a second screen over the LAN -->
+    <string name="settings_lyrics_display_title">Letra num ecrã à parte</string>
+    <string name="settings_lyrics_display_desc">Procura a letra da faixa em reprodução no NetEase Music e no QQ Music e envia-a para um segundo ecrã pela rede local: a aplicação do ecrã liga-se a esta porta e recebe o título, a letra e a posição. Funciona com qualquer reprodutor, incluindo a música por Bluetooth a partir do telemóvel.</string>
+    <string name="settings_lyrics_display_port_label">Porta</string>
+    <string name="settings_lyrics_display_status">Indique no ecrã: %1$s · ligados: %2$d (%3$s)</string>
+    <string name="settings_lyrics_display_access_title">Acesso às notificações</string>
+    <string name="settings_lyrics_display_access_desc">Sem ele nenhuma sessão do reprodutor é lida, e o ecrã mostra que nada está em reprodução. No carro quem concede é o daemon helper; noutro dispositivo, ative-o manualmente.</string>
+    <string name="settings_lyrics_display_access_action">Ativar</string>
+
     <!-- ADB restore after reboot (firmwares 2606+) -->
     <string name="settings_adb_restore_title">Restaurar o ADB após reiniciar</string>
     <string name="settings_adb_restore_desc">Para firmwares em que o ADB desliga a cada reinício. É necessário Wi-Fi ligado.</string>

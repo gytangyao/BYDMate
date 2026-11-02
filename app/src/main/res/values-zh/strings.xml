@@ -843,6 +843,15 @@
     <string name="settings_cluster_music_card_title">仪表显示曲目</string>
     <string name="settings_cluster_music_card_desc">为原厂固件不支持的播放器在仪表盘音乐卡片上显示歌名与歌手：Yandex 导航（Alice）、Yandex 音乐、Spotify、网络电台等。原厂播放器和蓝牙由固件自行填写。</string>
 
+    <!-- Lyrics pushed to a second screen over the LAN -->
+    <string name="settings_lyrics_display_title">外接屏幕歌词</string>
+    <string name="settings_lyrics_display_desc">在网易云音乐和 QQ 音乐中查找正在播放歌曲的歌词，并通过局域网送到第二块屏幕：屏幕端应用连上这个端口就能拿到歌名、歌词和播放进度。支持任意播放器，包括手机蓝牙播放的音乐。</string>
+    <string name="settings_lyrics_display_port_label">端口</string>
+    <string name="settings_lyrics_display_status">屏幕端填写：%1$s · 已连接：%2$d（%3$s）</string>
+    <string name="settings_lyrics_display_access_title">通知使用权</string>
+    <string name="settings_lyrics_display_access_desc">没有它读不到任何播放会话，屏幕会一直显示“没有正在播放的歌”。车机上这个权限由 helper 守护进程自动授予；其他设备请自己打开。</string>
+    <string name="settings_lyrics_display_access_action">去授权</string>
+
     <!-- ADB restore after reboot (firmwares 2606+) -->
     <string name="settings_adb_restore_title">重启后恢复 ADB</string>
     <string name="settings_adb_restore_desc">适用于每次重启后 ADB 都会关闭的固件。需要打开 Wi-Fi。</string>

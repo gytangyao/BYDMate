@@ -410,6 +410,7 @@ class SettingsViewModelTest {
             logTelegramSender = logTelegramSender,
             telegramReporter = mockk(relaxed = true),
             clusterMusicBridge = mockk(relaxed = true),
+            lyricsDisplayEngine = mockk(relaxed = true),
             vehicleWriteLogDao = mockk(relaxed = true),
             vehicleKindMonitor = vehicleKind?.let { com.bydmate.app.data.nativestack.kindMonitor(it) }
                 ?: mockk(relaxed = true),

@@ -30,9 +30,12 @@ import dagger.hilt.android.EntryPointAccessors
 import kotlin.math.roundToInt
 import com.bydmate.app.diagnostics.Trace
 import com.bydmate.app.diagnostics.TraceArea
+import com.bydmate.app.lyrics.LocalAddresses
+import com.bydmate.app.lyrics.LyricsPreferences
 import com.bydmate.app.ui.widget.LeftTapMode
 import com.bydmate.app.ui.widget.WidgetController
 import com.bydmate.app.ui.widget.WidgetPreferences
+import androidx.core.app.NotificationManagerCompat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
@@ -309,7 +312,7 @@ fun SettingsScreen(
                             state, viewModel, onNavigateToVoiceJournal, onNavigateToAgentChat, onNavigateToVoiceUserPhrases,
                         )
                         SettingsSection.WIDGET -> WidgetSection()
-                        SettingsSection.DISPLAY -> DisplaySection()
+                        SettingsSection.DISPLAY -> DisplaySection(viewModel)
                         SettingsSection.SPLIT -> SplitSection(viewModel)
                         SettingsSection.SERVICE -> ServiceSection(state, viewModel)
                         SettingsSection.APP -> AppSection(state, viewModel)
@@ -1155,7 +1158,7 @@ internal fun leftTapModeSelectable(idx: Int, splitFeatureEnabled: Boolean): Bool
     idx == 0 || splitFeatureEnabled
 
 @Composable
-private fun DisplaySection() {
+private fun DisplaySection(viewModel: SettingsViewModel) {
     val context = LocalContext.current
     val prefs = remember {
         context.getSharedPreferences(ClusterProjectionManager.PREFS_NAME, Context.MODE_PRIVATE)
@@ -1579,7 +1582,113 @@ private fun DisplaySection() {
             )
         }
     }
+
+    LyricsDisplayCard(viewModel)
 }
+
+/**
+ * «Тексты на внешнем экране»: BYDMate becomes the server a second screen dials into, reads the
+ * media sessions of every player and pushes the song, its words and its position as JSON lines.
+ * LyricsPreferences is re-read on every engine tick, like the cards above, so the switch and the
+ * port land without a restart; the status line is the address to type into the screen when mDNS
+ * discovery is filtered by the network.
+ */
+@Composable
+private fun LyricsDisplayCard(viewModel: SettingsViewModel) {
+    val context = LocalContext.current
+    val prefs = remember {
+        context.getSharedPreferences(LyricsPreferences.PREFS_NAME, Context.MODE_PRIVATE)
+    }
+    var enabled by remember { mutableStateOf(prefs.getBoolean(LyricsPreferences.KEY_ENABLED, false)) }
+    var portText by remember {
+        mutableStateOf(prefs.getInt(LyricsPreferences.KEY_PORT, LyricsPreferences.DEFAULT_PORT).toString())
+    }
+    val displays by viewModel.lyricDisplays.collectAsStateWithLifecycle()
+    val addresses = remember(enabled) { LocalAddresses.reachable() }
+    // Without the listener grant every read of the player sessions comes back null and the screen
+    // says nothing is playing — the one failure the driver can fix himself, so it is the first row
+    // the card shows. The head unit grants it through the helper daemon and never sees this row.
+    var listenerGranted by remember { mutableStateOf(notificationAccessGranted(context)) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) listenerGranted = notificationAccessGranted(context)
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    val accessSettingsAvailable = remember {
+        Intent(AndroidSettings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+            .resolveActivity(context.packageManager) != null
+    }
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = CardSurfaceElevated),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp)) {
+            SettingToggleRow(
+                title = stringResource(R.string.settings_lyrics_display_title),
+                traceId = "lyrics_display",
+                description = stringResource(R.string.settings_lyrics_display_desc),
+                checked = enabled,
+                onCheckedChange = {
+                    enabled = it
+                    LyricsPreferences.setEnabled(prefs, it)
+                },
+            )
+            if (enabled) {
+                if (!listenerGranted) {
+                    SettingDivider()
+                    SettingStatusRow(
+                        title = stringResource(R.string.settings_lyrics_display_access_title),
+                        description = stringResource(R.string.settings_lyrics_display_access_desc),
+                        ok = false,
+                        buttonLabel = if (accessSettingsAvailable) {
+                            stringResource(R.string.settings_lyrics_display_access_action)
+                        } else {
+                            null
+                        },
+                        onClick = if (accessSettingsAvailable) {
+                            {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(AndroidSettings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                    )
+                                }
+                            }
+                        } else {
+                            null
+                        },
+                    )
+                }
+                SettingDivider()
+                SettingsTextField(
+                    label = stringResource(R.string.settings_lyrics_display_port_label),
+                    value = portText,
+                    onValueChange = { raw ->
+                        portText = raw.filter { it.isDigit() }.take(5)
+                        LyricsPreferences.setPort(prefs, portText.toIntOrNull() ?: 0)
+                    },
+                    keyboardType = KeyboardType.Number,
+                )
+                val where = addresses.ifEmpty { listOf("—") }.joinToString(" ") { "$it:$portText" }
+                SettingHint(
+                    text = stringResource(
+                        R.string.settings_lyrics_display_status, where, displays.size,
+                        displays.joinToString(", ").ifEmpty { "—" },
+                    ),
+                )
+            }
+        }
+    }
+}
+
+/** Whether the framework has our [com.bydmate.app.media.MediaSessionListenerService] enabled —
+ *  the same check the diagnostics dump reports as `notif_listener_enabled`. */
+private fun notificationAccessGranted(context: Context): Boolean =
+    NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
 
 /**
  * «Слепые зоны»: turn signal → blind-spot camera. Reads and writes the feature's own

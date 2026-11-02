@@ -402,6 +402,7 @@ class SettingsViewModel @Inject @Suppress("LongParameterList") constructor( // H
     private val logTelegramSender: com.bydmate.app.diagnostics.LogTelegramSender,
     private val telegramReporter: com.bydmate.app.data.telegram.TelegramReporter,
     private val clusterMusicBridge: com.bydmate.app.media.ClusterMusicBridge,
+    private val lyricsDisplayEngine: com.bydmate.app.lyrics.LyricsDisplayEngine,
     private val vehicleWriteLogDao: com.bydmate.app.data.local.dao.VehicleWriteLogDao,
     private val vehicleKindMonitor: com.bydmate.app.data.nativestack.VehicleKindMonitor,
 ) : ViewModel() {
@@ -409,6 +410,9 @@ class SettingsViewModel @Inject @Suppress("LongParameterList") constructor( // H
     /** ADB control-channel verdict for the line under the ADB-restore toggle. */
     val adbVerdict: StateFlow<com.bydmate.app.data.autoservice.AdbVerdict?> = adbVerdictMonitor.verdict
     val adbChecking: StateFlow<Boolean> = adbVerdictMonitor.checking
+
+    /** Displays attached to the lyric link, for the card's status line. */
+    val lyricDisplays: StateFlow<List<String>> = lyricsDisplayEngine.displays
 
     /** Car type: the price-per-litre field shows only on a confirmed hybrid. */
     val vehicleKind: StateFlow<com.bydmate.app.data.nativestack.VehicleKind> = vehicleKindMonitor.kind
@@ -2474,6 +2478,11 @@ class SettingsViewModel @Inject @Suppress("LongParameterList") constructor( // H
             try {
                 clusterMusicBridge.dumpLines().forEach { appendLine(it) }
             } catch (e: Exception) { appendLine("(failed to gather cluster music state: ${e.message})") }
+
+            appendLine("--- lyrics display ---")
+            try {
+                lyricsDisplayEngine.dumpLines().forEach { appendLine(it) }
+            } catch (e: Exception) { appendLine("(failed to gather lyric display state: ${e.message})") }
 
             appendLine("--- trip counters ---")
             try {
