@@ -1,5 +1,6 @@
 package com.bydmate.app.data.mysql
 
+import com.bydmate.app.data.autoservice.AdbVerdictJournal
 import com.bydmate.app.data.charging.CatchUpJournal
 import com.bydmate.app.data.local.dao.SettingsDao
 import com.bydmate.app.data.local.entity.SettingEntity
@@ -50,7 +51,10 @@ class ChargeJournalShippingTest {
 
     private val settings = SettingsRepository(FakeSettingsDao(), mockk(relaxed = true))
     private val journal = CatchUpJournal(settings)
-    private val collector = CarLogCollector(settings, journal).apply { exec = { EmptyDumpProcess() } }
+    // An empty prefs verdict store: this ring ships on its own, and these tests must not gain a
+    // second row from the ADB heartbeat that shares the collector.
+    private val collector = CarLogCollector(settings, journal, AdbVerdictJournal(settings))
+        .apply { exec = { EmptyDumpProcess() } }
 
     private suspend fun writeRing(vararg verdicts: String) {
         verdicts.forEachIndexed { i, v -> journal.append(v, now = START_MS + i * 1000L) }
