@@ -6,6 +6,7 @@ import io.mockk.coVerify
 import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -40,9 +41,10 @@ class AdbVerdictMonitorTest {
     private val system: AdbRestoreSystem = mockk(relaxed = true) {
         every { readAdbWifiEnabled() } returns 0
     }
+    private val journal: AdbVerdictJournal = mockk(relaxed = true)
 
     private fun TestScope.monitor(scope: CoroutineScope = backgroundScope) =
-        AdbVerdictMonitor(bootstrap, adb, restore, system, scope)
+        AdbVerdictMonitor(bootstrap, adb, restore, system, journal, scope)
 
     @Test
     fun `verdict stays null before the 15 s gate and publishes after`() = runTest {
@@ -206,5 +208,58 @@ class AdbVerdictMonitorTest {
             restore.setEnabled(true)
             restore.attemptIfNeeded("verdict_dialog")
         }
+    }
+
+    @Test
+    fun `the heartbeat republishes on its own clock when nothing else asks`() = runTest {
+        var healthy = false
+        coEvery { bootstrap.isHealthy() } answers { healthy }
+        val m = monitor()
+        m.onServiceStarted()
+        advanceTimeBy(AdbVerdictMonitor.GATE_MS + 1)
+        runCurrent()
+        assertEquals(AdbVerdict.NOT_ENABLED, m.verdict.value)
+
+        // The channel comes back while nobody is looking — no recheck, no restore transition, and
+        // in the field no sample either. The minute clock is the only thing that can notice.
+        healthy = true
+        advanceTimeBy(AdbVerdictMonitor.HEARTBEAT_MS - AdbVerdictMonitor.GATE_MS)
+        runCurrent()
+        assertEquals(AdbVerdict.OK, m.verdict.value)
+    }
+
+    @Test
+    fun `a publish writes the verdict and every input behind it to the journal`() = runTest {
+        coEvery { adb.isConnected() } returns true
+        val m = monitor()
+        m.onServiceStarted()
+        advanceTimeBy(AdbVerdictMonitor.GATE_MS + 1)
+        runCurrent()
+
+        val line = slot<String>()
+        coVerify { journal.record(capture(line), any()) }
+        val written = line.captured
+        assertTrue(written, written.startsWith("verdict=HELPER_DOWN"))
+        assertTrue(written, written.contains(" healthy=0"))
+        assertTrue(written, written.contains(" connected=1"))
+        assertTrue(written, written.contains(" restore=Disabled"))
+        assertTrue(written, written.contains(" wifi=0"))
+        assertTrue(written, written.contains(" model="))
+    }
+
+    @Test
+    fun `a restore in flight overwrites no journal line`() = runTest {
+        val m = monitor()
+        m.onServiceStarted()
+        advanceTimeBy(AdbVerdictMonitor.GATE_MS + 1)
+        runCurrent()
+        coVerify(exactly = 1) { journal.record(any(), any()) }
+
+        // verdict=null here: the hub still holds the previous explanation, and an empty row would
+        // replace "wireless debugging is off" with nothing while the restore is still trying.
+        restoreState.value = AdbRestoreState.Connecting
+        runCurrent()
+        assertNull(m.verdict.value)
+        coVerify(exactly = 1) { journal.record(any(), any()) }
     }
 }

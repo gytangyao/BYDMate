@@ -1,6 +1,7 @@
 package com.bydmate.app.data.mysql
 
 import android.util.Log
+import com.bydmate.app.data.autoservice.AdbVerdictJournal
 import com.bydmate.app.data.charging.CatchUpJournal
 import com.bydmate.app.data.repository.SettingsRepository
 import com.bydmate.app.diagnostics.LogRecorder
@@ -45,14 +46,17 @@ data class MysqlLogRecord(
  * line, and per-flush ([MAX_FLUSH_ROWS]) / per-day ([MAX_DAY_ROWS]) row caps.
  *
  * The threshold is also the blind spot: a verdict the driver needs is usually INFO, and INFO only
- * survives as context under a WARN. So one thing bypasses logcat — [CatchUpJournal], the ring of
+ * survives as context under a WARN. So two things bypass logcat: [CatchUpJournal], the ring of
  * charging decisions the detector keeps in prefs, ships whole whenever it changes
- * ([chargeJournalBatch]).
+ * ([chargeJournalBatch]); [AdbVerdictJournal] ships the ADB-channel verdict on the same terms
+ * ([adbVerdictBatch]) because the row that used to carry it — `car_state.raw` — stops existing
+ * precisely when that verdict is bad.
  */
 @Singleton
 class CarLogCollector @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val journal: CatchUpJournal,
+    private val verdictJournal: AdbVerdictJournal,
 ) {
     /** Seam for tests, mirroring [com.bydmate.app.diagnostics.LogRecorder]: a canned dump, no device. */
     var exec: (Array<String>) -> Process = { Runtime.getRuntime().exec(it) }
@@ -69,6 +73,11 @@ class CarLogCollector @Inject constructor(
     @Volatile private var journalSentVerdicts: List<String>? = null
     @Volatile private var journalPendingVerdicts: List<String>? = null
 
+    /** Same rule for the ADB heartbeat: what the hub has, and when it last got it. */
+    @Volatile private var verdictSentLine: String? = null
+    @Volatile private var verdictSentAtMs = 0L
+    @Volatile private var verdictPendingLine: String? = null
+
     /**
      * New lines ready to ship, oldest first, already redacted. Empty when shipping is off or nothing
      * notable was written since the last flush. Call [markShipped] only once the rows are in MySQL:
@@ -76,7 +85,7 @@ class CarLogCollector @Inject constructor(
      */
     suspend fun pendingBatch(): List<MysqlLogRecord> = withContext(Dispatchers.IO) {
         if (!enabled()) return@withContext emptyList()
-        val rows = logcatBatch() + chargeJournalBatch()
+        val rows = logcatBatch() + chargeJournalBatch() + adbVerdictBatch()
         // Stamping claims a run id in prefs, so an empty flush must not reach it.
         if (rows.isEmpty()) emptyList() else stampRuns(rows)
     }
@@ -121,6 +130,10 @@ class CarLogCollector @Inject constructor(
         }
         settingsRepository.setStrings(values)
         if (batch.any { it.tag == JOURNAL_TAG }) journalSentVerdicts = journalPendingVerdicts
+        if (batch.any { it.tag == VERDICT_TAG }) {
+            verdictSentLine = verdictPendingLine
+            verdictSentAtMs = now
+        }
     }
 
     /**
@@ -147,6 +160,39 @@ class CarLogCollector @Inject constructor(
                 level = "I",
                 tag = JOURNAL_TAG,
                 msg = LogRedactor.redact(journalMsg(entries)),
+                marker = true,
+            )
+        )
+    }
+
+    /**
+     * Why the car has no live data, as one row per change and per hour.
+     *
+     * The ADB verdict used to travel only inside `car_state.raw`. That is a row written by the very
+     * channel the verdict describes, so on 2026-10-28 — a reboot that left wireless debugging off —
+     * the four days with no `car_state` rows were also four days with no explanation anywhere, and
+     * the phone had nothing to show but a five-day-old snapshot. Shipping the verdict here puts the
+     * reason on the one path that survives a dead autoservice: prefs read, WorkManager schedule,
+     * MySQL write, no binder and no sample.
+     *
+     * Re-sent hourly even when unchanged, because "the car is alive and its channel is fine" is only
+     * information if the phone can tell it apart from a car that stopped shipping altogether.
+     *
+     * `internal` with a [now] seam so the hourly rule is testable without a wall clock; the caller
+     * never passes one.
+     */
+    internal suspend fun adbVerdictBatch(now: Long = System.currentTimeMillis()): List<MysqlLogRecord> {
+        val entry = verdictJournal.entry() ?: return emptyList()
+        val now = System.currentTimeMillis()
+        if (entry.line == verdictSentLine && now - verdictSentAtMs < VERDICT_RESHIP_MS) return emptyList()
+        verdictPendingLine = entry.line
+        return listOf(
+            MysqlLogRecord(
+                ts = now,
+                // A dead channel is worth filtering for; a healthy one is only a heartbeat.
+                level = if (entry.line.startsWith(VERDICT_OK)) "I" else "W",
+                tag = VERDICT_TAG,
+                msg = LogRedactor.redact("$VERDICT_PREFIX${entry.line} since=${entry.sinceMs}"),
                 marker = true,
             )
         )
@@ -294,6 +340,12 @@ class CarLogCollector @Inject constructor(
         internal const val JOURNAL_TAG = "AutoserviceDetector"
         private const val JOURNAL_PREFIX = "catch-up verdicts: "
         private const val JOURNAL_SEPARATOR = " | "
+
+        /** Same tag the verdict monitor logs under, so one query finds both its lines and its heartbeat. */
+        internal const val VERDICT_TAG = "AdbVerdict"
+        private const val VERDICT_PREFIX = "adb verdict: "
+        private const val VERDICT_OK = "verdict=OK"
+        internal const val VERDICT_RESHIP_MS = 60 * 60_000L
         private const val EMPTY_WARN_COOLDOWN_MS = 10 * 60 * 1000L
 
         /**

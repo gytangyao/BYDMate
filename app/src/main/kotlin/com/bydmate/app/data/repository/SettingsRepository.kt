@@ -194,6 +194,11 @@ open class SettingsRepository @Inject constructor(
         // Included in the diagnostic dump — logcat rotates out the startup
         // window within minutes on DiLink, so field reports need this.
         const val KEY_CATCHUP_JOURNAL = "catchup_journal"
+        // The last ADB-channel verdict and the instant it became true. Held in prefs because the
+        // row that used to carry it (`car_state.raw`) stops being written exactly when the verdict
+        // is bad — see AdbVerdictJournal.
+        const val KEY_ADB_VERDICT_LINE = "adb_verdict_line"
+        const val KEY_ADB_VERDICT_SINCE = "adb_verdict_since"
         /** Comma-separated TechCard ids in the order the driver dragged them into. */
         const val KEY_TECH_CARD_ORDER = "tech_card_order"
         /** "true" once a card has actually been dragged — hides the reorder hint. */
