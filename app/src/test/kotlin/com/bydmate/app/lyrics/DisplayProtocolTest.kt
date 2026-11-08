@@ -119,12 +119,36 @@ class DisplayProtocolTest {
         assertEquals(1.0, frame.getDouble("speed"), 0.0001)
     }
 
-    @Test fun `an anchor is the only frame that replaces a queued one`() {
+    @Test fun `an anchor is a frame that replaces a queued one`() {
         assertTrue(DisplayProtocol.isAnchor(DisplayProtocol.anchor(play)))
         assertFalse(DisplayProtocol.isAnchor(DisplayProtocol.track(play, "ready")))
         assertFalse(DisplayProtocol.isAnchor(DisplayProtocol.lyrics(play.key, hit)))
         assertFalse(DisplayProtocol.isAnchor(DisplayProtocol.idle("no session")))
         assertFalse(DisplayProtocol.isAnchor("{not json"))
+    }
+
+    @Test fun `a look frame carries the cabin's mode and backlight`() {
+        val frame = JSONObject(DisplayProtocol.look(DisplayProtocol.THEME_DARK, 51, auto = false))
+        assertEquals("look", frame.getString("t"))
+        assertEquals("dark", frame.getString("theme"))
+        assertEquals(51, frame.getInt("brightness"))
+        assertFalse(frame.getBoolean("auto"))
+        assertFalse(frame.toString().contains("\n"))
+    }
+
+    @Test fun `daylight and an unreadable backlight are both said explicitly`() {
+        val frame = JSONObject(DisplayProtocol.look(DisplayProtocol.THEME_LIGHT, null, auto = true))
+        assertEquals("light", frame.getString("theme"))
+        assertTrue(frame.isNull("brightness"))
+        assertTrue(frame.getBoolean("auto"))
+    }
+
+    @Test fun `a look replaces a queued one, and only its own kind`() {
+        assertTrue(DisplayProtocol.isLook(DisplayProtocol.look("dark", 10, auto = false)))
+        assertFalse(DisplayProtocol.isLook(DisplayProtocol.anchor(play)))
+        assertFalse(DisplayProtocol.isLook(DisplayProtocol.track(play, "ready")))
+        assertFalse(DisplayProtocol.isLook("{not json"))
+        assertFalse(DisplayProtocol.isAnchor(DisplayProtocol.look("dark", 10, auto = false)))
     }
 
     @Test fun `a ping reads its token and a hello its name`() {

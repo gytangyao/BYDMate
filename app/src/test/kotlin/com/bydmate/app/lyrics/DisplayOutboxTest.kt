@@ -8,8 +8,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The one backpressure rule the display link runs on: a stale position frame is worse than none, and
- * everything else has to survive a slow reader.
+ * The one backpressure rule the display link runs on: a frame that says "now" is worse than none once a
+ * newer one has arrived, and everything else has to survive a slow reader.
  */
 class DisplayOutboxTest {
 
@@ -30,6 +30,26 @@ class DisplayOutboxTest {
         assertEquals(2, outbox.size)
         assertEquals("track", outbox.poll(0))
         assertEquals(2_000L, JSONObject(outbox.poll(0).orEmpty()).getLong("pos"))
+    }
+
+    // A backlight dragged across its range writes a setting per stop, and a display that paused to
+    // collect garbage must not be handed thirty of them on the way out.
+    @Test fun `a look replaces every look still waiting`() {
+        outbox.push(lookAt(200))
+        outbox.push("track")
+        outbox.push(lookAt(30))
+        assertEquals(2, outbox.size)
+        assertEquals("track", outbox.poll(0))
+        assertEquals(30, JSONObject(outbox.poll(0).orEmpty()).getInt("brightness"))
+    }
+
+    @Test fun `the two replaceable kinds do not replace each other`() {
+        outbox.push(lookAt(200))
+        outbox.push(anchorAt(1_000L))
+        outbox.push(lookAt(30))
+        assertEquals(2, outbox.size)
+        assertEquals(1_000L, JSONObject(outbox.poll(0).orEmpty()).getLong("pos"))
+        assertEquals(30, JSONObject(outbox.poll(0).orEmpty()).getInt("brightness"))
     }
 
     @Test fun `a song and its timeline are never dropped for a newer anchor`() {
@@ -56,6 +76,8 @@ class DisplayOutboxTest {
 
     private fun anchorAt(positionMs: Long) =
         DisplayProtocol.anchor(play().copy(positionMs = positionMs, atUptimeMs = positionMs))
+
+    private fun lookAt(brightness: Int) = DisplayProtocol.look(DisplayProtocol.THEME_DARK, brightness, auto = false)
 
     private fun play() = NowPlaying(
         packageName = "com.tencent.qqmusic", title = "晴天", artist = "周杰伦",

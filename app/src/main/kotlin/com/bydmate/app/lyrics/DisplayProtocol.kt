@@ -32,8 +32,33 @@ object DisplayProtocol {
     const val LYRICS_READY = "ready"
     const val LYRICS_NONE = "none"
 
+    /** The head unit's own appearance, which a second screen in the same cabin is expected to match. */
+    const val THEME_DARK = "dark"
+    const val THEME_LIGHT = "light"
+
     fun hello(appName: String, appVersion: String): String = JSONObject()
         .put("t", "hello").put("proto", VERSION).put("app", appName).put("ver", appVersion)
+        .toString()
+
+    /**
+     * How the head unit's own screen looks, so a panel in the same cabin dims and turns with it.
+     * [theme] is [THEME_DARK] or [THEME_LIGHT]; [brightness] is Android's `SCREEN_BRIGHTNESS` on its
+     * 0..255 scale, or null when the setting cannot be read.
+     *
+     * [auto] says the head unit is driving its backlight from a light sensor. The setting is still sent
+     * and still followed: it is the only number the system publishes, on a head unit the vendor's own
+     * day/night dimming normally writes it, and a display that refused it would sit at a brightness
+     * unrelated to the cabin for the whole drive. The flag rides along so the panel can say the number
+     * is the car's report rather than the driver's hand.
+     *
+     * Sent once to a display that connects and again on every change — never on a timer, because a
+     * cabin's appearance changes a handful of times a drive.
+     */
+    fun look(theme: String, brightness: Int?, auto: Boolean): String = JSONObject()
+        .put("t", "look")
+        .put("theme", theme)
+        .put("brightness", brightness ?: JSONObject.NULL)
+        .put("auto", auto)
         .toString()
 
     /**
@@ -111,4 +136,7 @@ object DisplayProtocol {
      * the field that lands first in the string.
      */
     fun isAnchor(frame: String): Boolean = frameOf(frame)?.optString("t") == "anchor"
+
+    /** Whether [frame] is the appearance update: like an anchor it says "now", so a queued one is stale. */
+    fun isLook(frame: String): Boolean = frameOf(frame)?.optString("t") == "look"
 }

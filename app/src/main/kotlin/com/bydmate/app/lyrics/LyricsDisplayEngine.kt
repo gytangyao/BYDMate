@@ -21,10 +21,11 @@ import javax.inject.Singleton
  * Drives a lyric display: watch what the head unit plays, look the words up, push the frames.
  *
  * It is the Android shell around [DisplayScheduler], which holds every rule about what is sent when;
- * here the work is the three things a shell has to do — read the media sessions, ask the catalogs,
- * and keep the [LyricsDisplayServer] listening on the port the driver chose. The poll is faster while
- * a song is playing ([POLL_PLAYING_MS]) than while nothing is ([POLL_IDLE_MS]): a track change is what
- * the driver notices, and it costs a `getActiveSessions` call, not a network round trip.
+ * here the work is the four things a shell has to do — read the media sessions, ask the catalogs,
+ * watch the head unit's own appearance, and keep the [LyricsDisplayServer] listening on the port the
+ * driver chose. The poll is faster while a song is playing ([POLL_PLAYING_MS]) than while nothing is
+ * ([POLL_IDLE_MS]): a track change is what the driver notices, and it costs a `getActiveSessions` call,
+ * not a network round trip.
  *
  * The lookup runs in its own child job, so a catalog that takes seconds never delays an anchor: the
  * display shows the new song at once, says it is waiting for words, and gets them mid-line.
@@ -39,6 +40,7 @@ class LyricsDisplayEngine @Inject constructor(
     private val server: LyricsDisplayServer,
     private val sessions: MediaSessionsReader,
     private val matcher: LyricMatcher,
+    private val appearance: DisplayAppearance,
 ) {
 
     private val access = ClusterMusicAccess(ACCESS_RETRY_MS)
@@ -48,6 +50,7 @@ class LyricsDisplayEngine @Inject constructor(
     val displays: StateFlow<List<String>> = server.connected
 
     @Volatile private var job: Job? = null
+    @Volatile private var appearanceJob: Job? = null
     @Volatile private var scope: CoroutineScope? = null
     @Volatile private var ensureAccess: (suspend (String) -> Unit)? = null
     @Volatile private var lookupJob: Job? = null
@@ -57,6 +60,13 @@ class LyricsDisplayEngine @Inject constructor(
     @Volatile private var lastOwner: String? = null
     @Volatile private var lastTraced: String? = null
     private var wasEnabled = false
+
+    /**
+     * The head unit's own theme and backlight, last seen. Written by the appearance watcher and read by
+     * the poll's state provider, so it is a single volatile reference rather than scheduler state: the
+     * two run on different IO threads and [DisplayScheduler] is not built for that.
+     */
+    @Volatile private var look: ScreenLook? = null
 
     /** Polls forever in [scope]; the switch is read on every tick, so turning it on needs no restart.
      *  [ensureAccess] re-arms notification-listener access, the way [ClusterMusicBridge] does. */
@@ -77,13 +87,32 @@ class LyricsDisplayEngine @Inject constructor(
                 delay(if (playing) POLL_PLAYING_MS else POLL_IDLE_MS)
             }
         }
+        watchAppearance(scope)
     }
 
     fun stop() {
         job?.cancel()
         job = null
+        appearanceJob?.cancel()
+        appearanceJob = null
         lookupJob?.cancel()
         server.stop()
+    }
+
+    /**
+     * The cabin's appearance, pushed the moment it changes rather than on the song poll: a head unit
+     * that dims at dusk must not take the panel with it a second and a half later. Broadcast straight
+     * to the displays — with the switch off there are none, and the value is still kept so the first
+     * display to connect is handed it before any song.
+     */
+    private fun watchAppearance(scope: CoroutineScope) {
+        appearanceJob?.cancel()
+        appearanceJob = scope.launch {
+            appearance.changes().collect {
+                look = it
+                server.broadcast(it.frame())
+            }
+        }
     }
 
     /** True when the tick found a song playing — what picks the next poll's spacing. */
@@ -101,7 +130,11 @@ class LyricsDisplayEngine @Inject constructor(
         }
         val serviceScope = scope ?: return false
         // Re-read every tick: the driver may change the port from the settings card mid-drive.
-        server.start(serviceScope, prefs.port, BuildConfig.VERSION_NAME) { scheduler.snapshot() }
+        // The appearance leads the snapshot so a display joining mid-track is painted in the cabin's
+        // colours before it is given a song, rather than a bright rectangle for one frame.
+        server.start(serviceScope, prefs.port, BuildConfig.VERSION_NAME) {
+            listOfNotNull(look?.frame()) + scheduler.snapshot()
+        }
         val read = sessions.read()
         if (read == null) {
             requestAccess()
@@ -180,6 +213,7 @@ class LyricsDisplayEngine @Inject constructor(
             "switch=${if (prefs.enabled) "on" else "off"} port=${if (server.isRunning) server.boundPort else "-"}",
             "mdns=${DisplayProtocol.SERVICE_TYPE} clients=${server.clientCount} " +
                 "names=${server.connected.value.ifEmpty { listOf("-") }}",
+            "look=" + (look?.let { "${it.theme} brightness=${it.brightness ?: "-"} auto=${it.auto}" } ?: "(unread)"),
             "song=" + (play?.let { "${it.packageName} \"${it.title}\" by ${it.artist}" } ?: "(nothing)"),
             "lyrics=$state key=${play?.key ?: "-"} pending=${lookupKey ?: "-"}",
             "position=" + (play?.let { "${it.positionMs} ms of ${it.durationMs ?: -1} playing=${it.playing}" } ?: "-"),

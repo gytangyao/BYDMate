@@ -42,8 +42,9 @@ import kotlin.coroutines.coroutineContext
  *
  * One frame per line, BYDMate writing and the display answering only with its hello and its clock
  * probe: a push protocol is what keeps a line switch off the network. The frames carry the title,
- * artist and words of whatever the car is playing and nothing else, on a network the driver owns —
- * which is why the feature is opt-in and the port is the driver's choice.
+ * artist and words of whatever the car is playing, plus how the head unit's own screen looks so the
+ * panel can turn with the cabin, and nothing else — on a network the driver owns, which is why the
+ * feature is opt-in and the port is the driver's choice.
  */
 @Singleton
 class LyricsDisplayServer @Inject constructor(

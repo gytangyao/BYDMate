@@ -6,11 +6,11 @@ import java.util.concurrent.TimeUnit
 /**
  * The lyric frames waiting for one display.
  *
- * A display that stops reading must not stall the poll or grow a buffer without end, and the frame
- * that is always safe to lose is the position anchor: it says "the song is here *now*", so a queued
- * one is worse than useless — it is stale. [push] therefore drops every anchor still waiting behind
- * the new one, and keeps everything else: song and timeline frames exist once per track and cannot
- * be rebuilt.
+ * A display that stops reading must not stall the poll or grow a buffer without end, and the frames
+ * that are always safe to lose are the ones that say "now": a queued position anchor is stale, and so
+ * is a queued appearance update — a brightness slider dragged across its range writes dozens of them.
+ * [push] drops every waiting frame of the kind that just arrived and keeps everything else: song and
+ * timeline frames exist once per track and cannot be rebuilt.
  *
  * Pure, so the coalescing rule is JVM-tested without a socket.
  */
@@ -25,6 +25,7 @@ class DisplayOutbox(private val maxFrames: Int = MAX_QUEUED_FRAMES) {
     /** False when the display is not reading; its writer is then closed and it reconnects. */
     fun push(frame: String): Boolean {
         if (DisplayProtocol.isAnchor(frame)) queue.removeIf { DisplayProtocol.isAnchor(it) }
+        else if (DisplayProtocol.isLook(frame)) queue.removeIf { DisplayProtocol.isLook(it) }
         if (!queue.offer(frame)) {
             dropped++
             return false
