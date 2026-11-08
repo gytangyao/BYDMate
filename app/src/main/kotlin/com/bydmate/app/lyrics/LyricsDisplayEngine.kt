@@ -135,6 +135,13 @@ class LyricsDisplayEngine @Inject constructor(
         server.start(serviceScope, prefs.port, BuildConfig.VERSION_NAME) {
             listOfNotNull(look?.frame()) + scheduler.snapshot()
         }
+        // DiLink's light/dark switch lives in its own settings provider and moves no Android
+        // broadcast, so the watcher cannot see it; the tick is what notices that one.
+        val fresh = appearance.read()
+        if (fresh != look) {
+            look = fresh
+            server.broadcast(fresh.frame())
+        }
         val read = sessions.read()
         if (read == null) {
             requestAccess()

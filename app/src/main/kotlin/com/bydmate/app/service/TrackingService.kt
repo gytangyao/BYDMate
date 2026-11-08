@@ -140,6 +140,7 @@ class TrackingService : Service(), LocationListener {
     @Inject lateinit var clusterMusicBridge: com.bydmate.app.media.ClusterMusicBridge
     @Inject lateinit var lyricsDisplayEngine: com.bydmate.app.lyrics.LyricsDisplayEngine
     @Inject lateinit var displayAppearance: com.bydmate.app.lyrics.DisplayAppearance
+    @Inject lateinit var displayProbe: com.bydmate.app.lyrics.DisplayProbe
     @Inject lateinit var logRecorder: com.bydmate.app.diagnostics.LogRecorder
     @Inject lateinit var splitPreferences: com.bydmate.app.split.SplitPreferences
     @Inject lateinit var logTelegramSender: com.bydmate.app.diagnostics.LogTelegramSender
@@ -1594,6 +1595,7 @@ class TrackingService : Service(), LocationListener {
                             theme = look.theme,
                             brightness = look.brightness,
                             auto = look.auto,
+                            probe = displayProbe.snapshot(),
                         ),
                     ),
                 )

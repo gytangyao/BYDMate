@@ -91,6 +91,8 @@ internal object CarStateRawJson {
         val theme: String,
         val brightness: Int? = null,
         val auto: Boolean = false,
+        /** TEMPORARY 2026-11-08: where this firmware keeps its theme, until the source is confirmed. */
+        val probe: String? = null,
     )
 
     fun build(
@@ -313,6 +315,7 @@ internal object CarStateRawJson {
                 put("theme", d.theme)
                 num("brightness", d.brightness)
                 put("auto", d.auto)
+                d.probe?.let { put("probe", it) }
             })
         }
     }.toString()
