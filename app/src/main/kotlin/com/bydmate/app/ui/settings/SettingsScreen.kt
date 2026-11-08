@@ -1972,6 +1972,9 @@ private fun SplitSection(viewModel: SettingsViewModel) {
     // Platformized firmware (OTA V1.6): the native 3:7 split is the only mechanism there, so the
     // screen states the fact instead of offering a choice that has one outcome.
     val split37Firmware = remember { Split37Engine.isPlatformizedFirmware() }
+    // #385: below Android 12 (DiLink 3 and 4) no split mechanism works, so neither the reboot
+    // advice nor the native mechanism is worth offering there.
+    val splitSdkUnavailable = remember { android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S }
     var clearStatus by remember { mutableStateOf<String?>(null) }
     // "?" badge on the section header; the text it toggles is the first block inside the card.
     var howToOpen by remember { mutableStateOf(false) }
@@ -2056,7 +2059,9 @@ private fun SplitSection(viewModel: SettingsViewModel) {
             // and point at the native mechanism, which does not depend on that flag. Both hints
             // are about freeform only, so the native mechanism — and a firmware that only has
             // the native one — hides them.
-            if (splitEnabled && !nativeMode && !split37Firmware &&
+            if (splitEnabled && splitSdkUnavailable) {
+                SettingHint(text = stringResource(R.string.split_freeform_unsupported_hint))
+            } else if (splitEnabled && !nativeMode && !split37Firmware &&
                 (splitFreeformUnsupported || splitRebootPending)) {
                 val hint = if (splitFreeformUnsupported) {
                     stringResource(R.string.split_freeform_unsupported_hint) + " " +
@@ -2829,6 +2834,37 @@ private fun ServiceSection(
         }
     }
 
+    // Time zone lock (#379): off by default; the switch follows what the helper confirmed.
+    var timezoneLock by remember { mutableStateOf(viewModel.isTimezoneLockOn()) }
+    var timezoneLockFailed by remember { mutableStateOf(false) }
+    var timezoneLockBusy by remember { mutableStateOf(false) }
+    val timezoneScope = rememberCoroutineScope()
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = CardSurfaceElevated),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp)) {
+            SettingToggleRow(
+                title = stringResource(R.string.settings_timezone_lock_title),
+                traceId = "timezone_lock",
+                description = stringResource(R.string.settings_timezone_lock_desc),
+                checked = timezoneLock,
+                onCheckedChange = { on ->
+                    timezoneLockBusy = true
+                    timezoneScope.launch {
+                        val ok = viewModel.setTimezoneLock(on)
+                        if (ok) timezoneLock = on
+                        timezoneLockFailed = !ok
+                        timezoneLockBusy = false
+                    }
+                },
+                enabled = !timezoneLockBusy,
+            )
+            if (timezoneLockFailed) SettingHint(text = stringResource(R.string.settings_timezone_lock_failed))
+        }
+    }
+
     // Autostart status card
     SectionHeader(text = stringResource(R.string.settings_autostart_header))
     Card(
@@ -2967,8 +3003,13 @@ private fun DiagnosticsRows(state: SettingsUiState, viewModel: SettingsViewModel
             else viewModel.startLogRecording()
         },
         // The saved log to the user's own bot, on a tap only: it holds trips and coordinates (#324).
-        secondButtonLabel = if (state.canSendLogToTelegram) stringResource(R.string.settings_log_tg_send) else null,
-        onSecondClick = { viewModel.sendLogToTelegram() },
+        // Without a bot, the system share sheet (#380).
+        secondButtonLabel = when {
+            state.canSendLogToTelegram -> stringResource(R.string.settings_log_tg_send)
+            state.canShareLog -> stringResource(R.string.settings_backup_share)
+            else -> null
+        },
+        onSecondClick = { viewModel.sendLog() },
         secondButtonEnabled = !state.logSending,
         onHelp = { help = R.string.settings_log_recording_start_button to R.string.settings_log_recording_help },
     )

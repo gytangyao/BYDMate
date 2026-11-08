@@ -6,7 +6,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +27,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
@@ -77,6 +75,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bydmate.app.R
 import com.bydmate.app.data.dtc.DtcKind
+import com.bydmate.app.data.dtc.DtcParser
 import com.bydmate.app.data.dtc.DtcScanPhase
 import com.bydmate.app.data.nativestack.MotorSplit
 import com.bydmate.app.data.nativestack.motorSplitPercent
@@ -107,13 +106,12 @@ import kotlin.math.roundToInt
 private const val DASH = "—"
 
 /**
- * «Техника» — the full-screen live panel behind the battery card on the Dashboard.
+ * «Техника» — the bottom bar tab with the live panel; the Dashboard battery card switches to it too.
  * Replaces the old battery-health dialog: same numbers plus the technical readings the
  * autoservice batch now carries. Cards without a single live value are not drawn.
  */
 @Composable
 fun TechPanelScreen(
-    onBack: () -> Unit,
     viewModel: TechPanelViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -129,7 +127,7 @@ fun TechPanelScreen(
             .background(Brush.verticalGradient(listOf(NavyDark, NavyDeep)))
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
-        Header(online = state.autoserviceOnline, onBack = onBack)
+        Header(online = state.autoserviceOnline)
 
         if (!state.hasAnyCard) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -162,6 +160,7 @@ fun TechPanelScreen(
             state = state,
             onScan = viewModel::scanDtc,
             onSend = { viewModel.sendDtc(dtcLabels(context)) },
+            onErase = viewModel::eraseDtc,
             onDismiss = viewModel::closeDtcDialog,
         )
     }
@@ -316,26 +315,16 @@ private fun TechCardContent(
 }
 
 @Composable
-private fun Header(online: Boolean?, onBack: () -> Unit) {
+private fun Header(online: Boolean?) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(28.dp)
-                .border(1.5.dp, TextMuted, CircleShape)
-                .clickable { onBack() },
-            contentAlignment = Alignment.Center
-        ) {
-            Text("‹", color = TextSecondary, fontSize = 16.sp)
-        }
         Text(
             stringResource(R.string.tech_title),
             color = AccentGreen,
             fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = 14.dp)
+            fontWeight = FontWeight.Bold
         )
         Box(modifier = Modifier.weight(1f))
         Text(
@@ -460,7 +449,7 @@ private fun LimitsAndCellsCard(state: TechPanelUiState, onHint: (String) -> Unit
         )
         TechRow(
             stringResource(R.string.tech_label_max_discharge),
-            state.bmsMaxDischargeKw?.let { stringResource(R.string.tech_value_kw, it) } ?: DASH,
+            state.bmsMaxDischargeKw?.let { stringResource(R.string.tech_value_ah, it) } ?: DASH,
         )
         Hint(state.openHint, "bmsLimits", R.string.tech_hint_bms_limits)
 
@@ -549,11 +538,11 @@ private fun MotorCardRow(row: MotorRow, state: TechPanelUiState) {
         MotorRow.INVERTER_TEMP -> {
             PairRow(
                 stringResource(R.string.tech_label_inverter_temp),
-                state.inverterTempFront?.let { stringResource(R.string.tech_value_deg, it) } ?: DASH,
-                state.inverterTempRear?.let { stringResource(R.string.tech_value_deg, it) } ?: DASH,
+                inverterTempForDisplay(state.inverterTempFront)?.let { stringResource(R.string.tech_value_deg, it) } ?: DASH,
+                inverterTempForDisplay(state.inverterTempRear)?.let { stringResource(R.string.tech_value_deg, it) } ?: DASH,
             )
             if (anyTemp != null) {
-                TempBarPair(state.inverterTempFront, state.inverterTempRear)
+                TempBarPair(inverterTempForDisplay(state.inverterTempFront), inverterTempForDisplay(state.inverterTempRear))
                 TempScaleCaption()
             }
         }
@@ -735,20 +724,29 @@ private fun ColumnScope.DtcScanBlock(state: TechPanelUiState, onScan: () -> Unit
         // The caption over the disabled button already says it.
         ?.takeUnless { it == R.string.tech_dtc_only_on_p && state.scanLabel == DtcScanLabel.ONLY_PARK }
     // Before any good scan, «Недоступно» replaces «Ещё не сканировали» instead of adding to it.
-    val unavailableOnly = summary == null && error == R.string.tech_dtc_unavailable
+    val unavailableOnly = summary == null && dtcUnavailableText(error)
+    val erasedAt = state.dtcErasedAt
     when {
         scanning -> DtcProgress(state.dtcScan)
-        unavailableOnly -> DtcNote(R.string.tech_dtc_unavailable)
+        unavailableOnly -> error?.let { DtcNote(it) }
         summary == null -> DtcNote(R.string.tech_dtc_never)
+        // The saved codes may be gone: one line instead of them, until a new scan.
+        state.dtcErasedSinceScan && erasedAt != null -> Column(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onOpen).padding(vertical = 2.dp),
+        ) {
+            DtcNote(stringResource(R.string.tech_dtc_erased_at, dtcTime(erasedAt)))
+        }
         else -> Column(
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onOpen).padding(vertical = 2.dp),
         ) {
             if (summary.found.isEmpty()) DtcNote(dtcNoRowsText(context, summary))
-            val blocks = summary.found.groupBy { it.addr }.values.toList()
+            // A merged group shows once, with all its addresses.
+            val groups = DtcParser.groups(summary.found).associate { it.addrs.first() to it.addrs }
+            val blocks = summary.found.filter { it.addr in groups }.groupBy { it.addr }.values.toList()
             blocks.take(DTC_CARD_BLOCKS).forEach { codes ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
                     Text(
-                        "0x%X".format(codes.first().addr),
+                        groups[codes.first().addr].orEmpty().joinToString(", ") { "0x%X".format(it) },
                         color = TextMuted,
                         fontSize = 11.sp,
                         fontFamily = FontFamily.Monospace,
@@ -787,6 +785,7 @@ private fun ColumnScope.DtcScanBlock(state: TechPanelUiState, onScan: () -> Unit
         }
     }
     if (!scanning && error != null && !unavailableOnly) DtcNote(error)
+    if (!scanning && state.dtcScan.firmwareHint) DtcNote(R.string.tech_dtc_firmware_hint)
     Box(modifier = Modifier.weight(1f))
     if (state.scanLabel == DtcScanLabel.ONLY_PARK) {
         Text(

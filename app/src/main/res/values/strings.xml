@@ -82,6 +82,9 @@
     <!-- Volume knob on the steering wheel: play/pause instead of audio-source switch -->
     <string name="settings_knob_play_pause_title">Колёсико громкости на руле</string>
     <string name="settings_knob_play_pause_desc">Нажатие ставит на паузу и продолжает воспроизведение, а не переключает источник звука. Нужно после обновления прошивки, где нажатие стало менять источник.</string>
+    <string name="settings_timezone_lock_title">Не менять часовой пояс по сети</string>
+    <string name="settings_timezone_lock_desc">Для машин у границы, где часовой пояс сам сбрасывается на пекинский. Сначала выберите нужный пояс в настройках машины, затем включите.</string>
+    <string name="settings_timezone_lock_failed">Не удалось: перезапустите помощник ADB и попробуйте снова</string>
     <string name="settings_cluster_music_card_title">Трек на приборке</string>
     <string name="settings_cluster_music_card_desc">Показывает название и исполнителя в карточке музыки на приборке для плееров, которые штатная прошивка пропускает: Яндекс Навигатор (Алиса), Яндекс Музыка, Spotify, интернет-радио и другие. Свои плееры и Bluetooth прошивка заполняет сама.</string>
 
@@ -421,6 +424,38 @@
     <string name="trip_detail_cost_per_100_label">На 100 км</string>
     <string name="trip_detail_soc_label">Заряд</string>
     <string name="trip_detail_ext_temp_label">За бортом</string>
+    <string name="trip_scrub_time">Время</string>
+    <string name="trip_scrub_from_start">От старта</string>
+    <string name="trip_scrub_speed">Скорость</string>
+    <string name="trip_scrub_power">Мощность</string>
+    <string name="trip_scrub_consumption_here">Расход тут</string>
+    <string name="trip_scrub_consumption">Расход</string>
+    <string name="trip_scrub_altitude">Высота</string>
+    <string name="trip_scrub_slow">медленно</string>
+    <string name="trip_scrub_range_distance">Отрезок</string>
+    <string name="trip_scrub_range_avg">Средняя</string>
+    <string name="trip_scrub_range_energy">Энергия</string>
+    <string name="trip_scrub_range_share">Доля поездки</string>
+    <string name="trip_scrub_unit_km">км</string>
+    <string name="trip_scrub_unit_kmh">км/ч</string>
+    <string name="trip_scrub_unit_kw">кВт</string>
+    <string name="trip_scrub_unit_kwh">кВт·ч</string>
+    <string name="trip_scrub_unit_per100">/100</string>
+    <string name="trip_scrub_unit_m">м</string>
+    <string name="trip_scrub_unit_min">мин</string>
+    <string name="trip_scrub_unit_percent" formatted="false">%</string>
+    <string name="trip_scrub_play">Проиграть</string>
+    <string name="trip_scrub_pause">Пауза</string>
+    <string name="trip_scrub_range_toggle">Участок</string>
+    <string name="trip_scrub_no_power_hint">Расход по треку есть только у новых поездок</string>
+    <string name="trip_scrub_legend_speed_min">0</string>
+    <string name="trip_scrub_legend_speed_max">140+ км/ч</string>
+    <string name="trip_scrub_legend_regen">рекуп.</string>
+    <string name="trip_scrub_legend_consumption_max">60 кВт·ч/100</string>
+    <string name="trip_scrub_chart_speed">Скорость, км/ч</string>
+    <string name="trip_scrub_chart_power">Мощность, кВт · ниже нуля рекуперация</string>
+    <string name="trip_scrub_map_max_speed">%1$d км/ч</string>
+    <string name="trip_scrub_map_max_regen">−%1$d кВт</string>
 
     <!-- Charges screen -->
     <string name="charges_filter_all">Все</string>
@@ -610,8 +645,8 @@
     <string name="automation_action_hotspot">Точка доступа Wi-Fi</string>
     <string name="automation_action_hotspot_on">Включить</string>
     <string name="automation_action_hotspot_off">Отключить</string>
-    <string name="automation_action_screen_off">Экран: выключить</string>
-    <string name="automation_action_screen_on">Экран: включить</string>
+    <string name="automation_action_screen_off">Центральный экран: выключить</string>
+    <string name="automation_action_screen_on">Центральный экран: включить</string>
     <string name="automation_action_speak">Озвучить текст</string>
     <string name="automation_action_agent_query">Запрос агенту</string>
     <string name="auto_act_speak">Озвучить текст</string>
@@ -1295,6 +1330,8 @@
     <string name="auto_act_drl_off">ДХО выкл</string>
     <string name="auto_act_hazard_on">Аварийка: включить</string>
     <string name="auto_act_hazard_off">Аварийка: выключить</string>
+    <string name="auto_act_rear_logo_light_on">Подсветка заднего логотипа: вкл</string>
+    <string name="auto_act_rear_logo_light_off">Подсветка заднего логотипа: выкл</string>
     <string name="auto_act_interior_light_on">Салонный свет вкл</string>
     <string name="auto_act_interior_light_off">Салонный свет выкл</string>
     <string name="auto_act_lock_doors">Заблокировать</string>
@@ -1333,12 +1370,12 @@
     <string name="auto_level_fridge_heat">Обогрев холодильника</string>
     <string name="auto_level_tile_temp">Температура 16–33 °C</string>
     <string name="auto_level_tile_fan">Вентилятор 1–7</string>
-    <string name="auto_level_tile_seat_heat_driver">Подогрев сиденья водителя выкл, 1–5</string>
-    <string name="auto_level_tile_seat_heat_passenger">Подогрев сиденья пассажира выкл, 1–5</string>
-    <string name="auto_level_tile_seat_vent_driver">Вентиляция сиденья водителя выкл, 1–5</string>
-    <string name="auto_level_tile_seat_vent_passenger">Вентиляция сиденья пассажира выкл, 1–5</string>
-    <string name="auto_level_tile_seat_heat_rear_left">Подогрев заднего левого сиденья выкл, 1–2</string>
-    <string name="auto_level_tile_seat_heat_rear_right">Подогрев заднего правого сиденья выкл, 1–2</string>
+    <string name="auto_level_tile_seat_heat_driver">Подогрев сиденья водителя: уровень 1–5 или выкл</string>
+    <string name="auto_level_tile_seat_heat_passenger">Подогрев сиденья пассажира: уровень 1–5 или выкл</string>
+    <string name="auto_level_tile_seat_vent_driver">Вентиляция сиденья водителя: уровень 1–5 или выкл</string>
+    <string name="auto_level_tile_seat_vent_passenger">Вентиляция сиденья пассажира: уровень 1–5 или выкл</string>
+    <string name="auto_level_tile_seat_heat_rear_left">Подогрев заднего левого сиденья: уровень 1–2 или выкл</string>
+    <string name="auto_level_tile_seat_heat_rear_right">Подогрев заднего правого сиденья: уровень 1–2 или выкл</string>
     <string name="auto_level_tile_window_driver">Окно водителя: положение 0–100 %</string>
     <string name="auto_level_tile_window_passenger">Окно пассажира: положение 0–100 %</string>
     <string name="auto_level_tile_window_rear_left">Заднее левое окно: положение 0–100 %</string>
@@ -1810,7 +1847,7 @@
     <string name="tech_label_battery_power">мощность батареи</string>
     <string name="tech_label_max_charge">макс. мощность заряда</string>
     <string name="tech_label_max_discharge_allow">макс. мощность разряда</string>
-    <string name="tech_label_max_discharge">доступная мощность батареи</string>
+    <string name="tech_label_max_discharge">ёмкость батареи</string>
     <string name="tech_label_motor_temp">температура мотора</string>
     <string name="tech_label_inverter_temp">температура инвертора</string>
     <string name="tech_label_rpm">обороты, об/мин</string>
@@ -1834,6 +1871,7 @@
     <string name="tech_value_volt">%1$d В</string>
     <!-- %1$d = kilowatts -->
     <string name="tech_value_kw">%1$d кВт</string>
+    <string name="tech_value_ah">%1$d А·ч</string>
     <!-- %1$.1f = kilowatt-hours -->
     <string name="tech_value_kwh">%1$.1f кВт·ч</string>
     <!-- %1$d = watts -->
@@ -1858,9 +1896,9 @@
     <string name="tech_hint_power">Сколько энергии батарея отдаёт прямо сейчас. Плюс: машина тратит (разгон, климат). Минус: батарея принимает энергию: рекуперация при торможении или зарядка от станции. Второе число: с какой скоростью уходит заряд, процентов в час. На стоянке это расход бортовой электроники.</string>
     <string name="tech_hint_12v">Напряжение обычного 12-вольтового аккумулятора, который питает электронику. На заведённой машине 13…14,5 В. Если на стоянке ниже 12 В, аккумулятор слабеет.</string>
     <string name="tech_hint_insulation">Сопротивление между высоковольтной батареей и кузовом. Чем больше, тем лучше: норма единицы мегаом. Падает к 0,5 МОм и ниже: где-то повреждена изоляция, пора на сервис.</string>
-    <string name="tech_hint_bms_limits">Все три числа приложение не считает, а читает у контроллера батареи (BMS) как есть. «Макс. мощность заряда» и «макс. мощность разряда» это верхние границы, которые BMS сейчас разрешает на зарядку и на отдачу из батареи; те же цифры показывают диагностические сканеры. «Доступная мощность батареи» это отдельное, меньшее число: BYD его не расшифровывает, по поведению это мощность, которую батарея готова отдавать длительно. На коротком разгоне машина берёт больше доступного, это нормально. На холодной или почти полной батарее все три значения ниже: зимой зарядка медленнее и рекуперация слабее.</string>
+    <string name="tech_hint_bms_limits">Все три числа приложение не считает, а читает у контроллера батареи (BMS) как есть. «Макс. мощность заряда» и «макс. мощность разряда» это верхние границы, которые BMS сейчас разрешает на зарядку и на отдачу из батареи; те же цифры показывают диагностические сканеры. «Ёмкость батареи» это текущая номинальная ёмкость пакета в ампер-часах, сканеры называют её Battery pack current nominal capacity. На холодной или почти полной батарее обе мощности ниже: зимой зарядка медленнее и рекуперация слабее.</string>
     <string name="tech_hint_cells">Батарея состоит из сотен ячеек. Показаны самая слабая и самая сильная и разница между ними. Разница до 20…30 мВ в норме. Постоянно большая разница: одна из ячеек стареет быстрее других.</string>
-    <string name="tech_hint_motors">Температура электромоторов и инверторов, которые ими управляют. В обычной езде до 60…80°. При долгом разгоне или буксировке греются сильнее, и машина сама снижает мощность, пока не остынут.</string>
+    <string name="tech_hint_motors">Температура электромоторов и инверторов, которые ими управляют. В обычной езде до 60…80°. При долгом разгоне или буксировке греются сильнее, и машина сама снижает мощность, пока не остынут. Ниже 30° машина температуру инвертора не сообщает, поэтому, пока он не прогреется, там прочерк.</string>
     <string name="tech_hint_compressor">Сколько ватт потребляет компрессор кондиционера и теплового насоса. Это главный потребитель кроме моторов: летом в жару и зимой в мороз он заметно съедает запас хода.</string>
     <string name="tech_hint_tyres">Давление и температура каждого колеса от датчиков в шинах. Давление растёт на 0,2…0,3 бар по мере прогрева в поездке, это нормально. Одно колесо заметно ниже других: проверьте, не спускает ли.</string>
     <string name="tech_order_hint">Удерживайте карточку, чтобы поменять порядок</string>
@@ -1925,6 +1963,9 @@
     <string name="automation_import_pick_title">Файлы автоматизаций в Download</string>
     <string name="automation_import_pick_empty">В папке Download нет файлов bydmate_rule_*.json</string>
     <string name="automation_import_invalid">Не удалось прочитать файл: это не автоматизация BYDMate</string>
+    <string name="automation_import_bad_condition">Условие %1$d в файле записано неверно, такую автоматизацию не добавить</string>
+    <string name="automation_import_bad_action">Действие %1$d в файле записано неверно, такую автоматизацию не добавить</string>
+    <string name="automation_import_too_many_actions">В файле больше %1$d действий, такую автоматизацию не добавить</string>
     <string name="automation_import_newer_version">Автоматизация из более новой версии, обновите приложение</string>
     <string name="automation_import_power_off_only">Эта автоматизация могла сработать только на выключенной машине, такого условия больше нет</string>
     <string name="automation_import_preview_title">Проверьте автоматизацию</string>
@@ -2302,6 +2343,7 @@
     <string name="tech_dtc_block_radar">передний радар</string>
     <string name="tech_dtc_block_bms">батарея (BMS)</string>
     <string name="tech_dtc_block_charger">зарядное (OBC)</string>
+    <string name="tech_dtc_block_ure">силовая установка</string>
     <string name="tech_dtc_block_body">кузовной блок 0x%1$X</string>
     <string name="tech_dtc_block_unknown">блок 0x%1$X</string>
     <string name="tech_dtc_full_adas">Контроллер ассистентов водителя (ADAS)</string>
@@ -2311,15 +2353,44 @@
     <string name="tech_dtc_full_radar">Передний радар</string>
     <string name="tech_dtc_full_bms">Блок управления батареей (BMS)</string>
     <string name="tech_dtc_full_charger">Бортовое зарядное и DC-DC</string>
-    <string name="tech_dtc_full_ure">Блок силовой установки URE</string>
+    <string name="tech_dtc_full_ure">Контроллер силовой установки</string>
     <string name="tech_dtc_full_body">Кузовной блок 0x%1$X</string>
     <string name="tech_dtc_full_unknown">Блок 0x%1$X</string>
-    <string name="tech_dtc_block_ure" translatable="false">URE</string>
+    <string name="tech_dtc_no_diag_service">Недоступно: в прошивке этой машины нет диагностического сервиса</string>
+    <string name="tech_dtc_firmware_hint">Обновите магнитолу до прошивки 1.6.0 или новее</string>
+    <string name="tech_dtc_erase_all">Стереть все</string>
+    <string name="tech_dtc_erase_block">стереть ›</string>
+    <string name="tech_dtc_note_erase">Сканирование ничего не меняет в машине, стирание очищает только память ошибок в блоках.</string>
+    <string name="tech_dtc_only_on_p_erase">Сканировать и стирать можно только на P</string>
+    <string name="tech_dtc_erase_title_all">Стереть ошибки во всех блоках?</string>
+    <string name="tech_dtc_erase_title_block">Стереть ошибки: %1$s?</string>
+    <string name="tech_dtc_erase_text_all">Блоки забудут старые ошибки. Ошибка, которая есть сейчас, вернётся сразу, если её причина не ушла. Если собираетесь в сервис, сначала отправьте коды в Telegram или сфотографируйте экран.</string>
+    <string name="tech_dtc_erase_text_block">Блок стирает свои коды только все вместе. Ошибка, которая есть сейчас, вернётся сразу, если её причина не ушла. Если собираетесь в сервис, сначала отправьте коды в Telegram или сфотографируйте экран.</string>
+    <string name="tech_dtc_erase_warning">Функция экспериментальная. Стирая ошибки, вы действуете на свой риск: всю ответственность за последствия вы берёте на себя.</string>
+    <string name="tech_dtc_erase_confirm">Стереть</string>
+    <string name="tech_dtc_erasing">Стираем: %1$d из %2$d…</string>
+    <string name="tech_dtc_erased_at">Коды стирались в %1$s, нажмите «Сканировать», чтобы увидеть, что осталось</string>
+    <string name="tech_dtc_erase_needs_scan">Проверке больше 10 минут: нажмите «Сканировать» и сотрите снова</string>
+    <string name="tech_dtc_erase_failed">Не удалось стереть: попробуйте ещё раз</string>
+    <string name="tech_dtc_erase_unknown">Результат стирания неизвестен: нажмите «Сканировать», чтобы увидеть, что осталось</string>
+    <string name="tech_dtc_v_erased">Стёрто</string>
+    <string name="tech_dtc_v_back">Стёрто, но код сразу вернулся: неисправность есть сейчас</string>
+    <string name="tech_dtc_v_likely">Блок не подтвердил, но кодов больше нет</string>
+    <string name="tech_dtc_v_unknown_codes">Блок не подтвердил стирание, коды остались</string>
+    <string name="tech_dtc_v_confirmed_unverified">Блок подтвердил стирание, перечитать не удалось. Чтобы стереть снова, нажмите «Сканировать»</string>
+    <string name="tech_dtc_v_unconfirmed_unverified">Блок не ответил, результат неизвестен. Чтобы стереть снова, нажмите «Сканировать»</string>
+    <string name="tech_dtc_v_refused">Блок отказал в стирании</string>
+    <string name="tech_dtc_v_not_run">Не стирали: стирание остановлено</string>
+    <string name="tech_dtc_stop_not_park">Стирание остановлено: машина не на P</string>
+    <string name="tech_dtc_stop_speed">Стирание остановлено: машина движется</string>
+    <string name="tech_dtc_stop_busy">Стирание остановлено: шина занята другой диагностикой</string>
+    <string name="tech_dtc_stop_budget">Стирание остановлено: вышло время</string>
+    <string name="tech_dtc_stop_other">Стирание остановлено</string>
     <plurals name="tech_dtc_answered">
-        <item quantity="one">ответил %1$d блок из %2$d</item>
-        <item quantity="few">ответили %1$d блока из %2$d</item>
-        <item quantity="many">ответили %1$d блоков из %2$d</item>
-        <item quantity="other">ответили %1$d блока из %2$d</item>
+        <item quantity="one">ответил %1$d блок</item>
+        <item quantity="few">ответили %1$d блока</item>
+        <item quantity="many">ответили %1$d блоков</item>
+        <item quantity="other">ответили %1$d блока</item>
     </plurals>
     <plurals name="tech_dtc_unread">
         <item quantity="one">Коды %1$d блока прочитать не удалось</item>

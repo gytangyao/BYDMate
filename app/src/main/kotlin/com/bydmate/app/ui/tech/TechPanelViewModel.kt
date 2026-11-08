@@ -5,11 +5,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bydmate.app.data.autoservice.Pm25Reader
 import com.bydmate.app.data.carstatus.CarStatusReader
+import com.bydmate.app.data.dtc.DtcBlockName
+import com.bydmate.app.data.dtc.DtcBlockNames
 import com.bydmate.app.data.dtc.DtcDescription
+import com.bydmate.app.data.dtc.DtcErasePhase
+import com.bydmate.app.data.dtc.DtcErasePlan
+import com.bydmate.app.data.dtc.DtcEraseState
 import com.bydmate.app.data.dtc.DtcFound
 import com.bydmate.app.data.dtc.DtcLabels
 import com.bydmate.app.data.dtc.DtcParser
 import com.bydmate.app.data.dtc.DtcScanPhase
+import com.bydmate.app.data.dtc.DtcSavedScan
 import com.bydmate.app.data.dtc.DtcScanRepository
 import com.bydmate.app.data.dtc.DtcScanState
 import com.bydmate.app.data.dtc.DtcScanSummary
@@ -142,10 +148,35 @@ data class TechPanelUiState(
     val dtcSending: Boolean = false,
     /** Result of the last send from the open dialog, null until one is made. */
     val dtcSendResult: DtcSendResult? = null,
+    /** The last erase of this process: progress, then a result per block. */
+    val dtcErase: DtcEraseState? = null,
+    /** When the last erase whose outcome is unknown ended, epoch ms. */
+    val dtcErasedAt: Long? = null,
+    /** Block name per address of the saved scan, rows or not (erase result lines need them). */
+    val dtcBlocks: Map<Int, DtcBlockName> = emptyMap(),
+    /** Blocks of unknown erase result since the saved scan: no erase of them until a new scan. */
+    val dtcEraseLocked: Set<Int> = emptySet(),
 ) {
-    /** The scan button is enabled on a running service in P and while no scan runs. */
+    val dtcErasing: Boolean
+        get() = dtcErase?.phase == DtcErasePhase.ERASING
+
+    /** The scan button is enabled on a running service in P and while no scan or erase runs. */
     val canScan: Boolean
-        get() = gear == GEAR_PARK && serviceRunning && dtcScan.phase != DtcScanPhase.SCANNING
+        get() = gear == GEAR_PARK && serviceRunning && dtcScan.phase != DtcScanPhase.SCANNING && !dtcErasing
+
+    /** An erase of unknown outcome ran after the saved scan: its list may be out of date until a new scan. */
+    val dtcErasedSinceScan: Boolean
+        get() = dtcErasedAt != null && dtcCheckedAt != null && dtcErasedAt >= dtcCheckedAt
+
+    /** The erase buttons show with an erasable block on display and no erase of unknown outcome since the scan. */
+    val showErase: Boolean
+        get() = dtcSummary?.found.orEmpty().any { canEraseBlock(it.addr) } && !dtcErasedSinceScan
+
+    /** False when the group of [addr] (a merged one included) holds a block of [dtcEraseLocked]. */
+    fun canEraseBlock(addr: Int): Boolean {
+        val group = DtcParser.groups(dtcSummary?.found.orEmpty()).firstOrNull { addr in it.addrs }?.addrs ?: listOf(addr)
+        return group.none { it in dtcEraseLocked }
+    }
 
     val scanLabel: DtcScanLabel
         get() = when {
@@ -249,6 +280,15 @@ data class TechPanelUiState(
  * Reverse spins the motors properly negative (hundreds of rpm), which passes through.
  */
 internal fun rpmForDisplay(raw: Int?): Int? = raw?.let { if (it in -1..0) 0 else it }
+
+/**
+ * The car never reports the inverter below 30° (#403): on a cold start at 4° outside with the
+ * motors at 8-11° both inverters read 30, and in a drive they rise to 36-37 and fall back to 30.
+ * So 30 means "30 or colder" and shows as unknown; anything else passes through.
+ */
+internal fun inverterTempForDisplay(raw: Int?): Int? = raw?.takeIf { it != INVERTER_TEMP_FLOOR_C }
+
+private const val INVERTER_TEMP_FLOOR_C = 30
 
 /**
  * Some cars never fill the remaining-energy fid and answer a flat 0 (a hybrid at SoC 39%, no push
@@ -501,9 +541,21 @@ class TechPanelViewModel @Inject constructor(
             dtcScanRepository.state.collect { scan -> _uiState.update { it.copy(dtcScan = scan) } }
         }
         viewModelScope.launch {
+            dtcScanRepository.eraseUpdates().collect { (erase, at) ->
+                _uiState.update { it.copy(dtcErase = erase, dtcErasedAt = at) }
+            }
+        }
+        viewModelScope.launch {
             dtcScanRepository.last.collect { last ->
+                dtcSaved = last
                 val summary = last?.let { DtcParser.summarize(it.results) }
-                _uiState.update { it.copy(dtcSummary = summary, dtcCheckedAt = last?.at, dtcDescriptions = emptyMap()) }
+                val blocks = last?.results.orEmpty().associate { it.addr to DtcBlockNames.identify(it.addr, it.idUds) }
+                _uiState.update {
+                    it.copy(
+                        dtcSummary = summary, dtcCheckedAt = last?.at, dtcDescriptions = emptyMap(), dtcBlocks = blocks,
+                        dtcEraseLocked = last?.eraseLocked.orEmpty(),
+                    )
+                }
                 if (summary == null) return@collect
                 // The tables load once, off the main thread; the codes show without text until then.
                 val descriptions = runCatching { dtcScanRepository.describe(summary) }.getOrDefault(emptyMap())
@@ -517,6 +569,24 @@ class TechPanelViewModel @Inject constructor(
 
     /** A tap on «Сканировать» or «Сканировать снова»; the repository re-checks P and ignores a second tap. */
     fun scanDtc() = dtcScanRepository.start()
+
+    /** The saved scan the erase targets come from. */
+    @Volatile private var dtcSaved: DtcSavedScan? = null
+
+    /**
+     * A confirmed «Стереть все» ([addr] null) or «стереть ›» on a block (all addresses of its
+     * group). A missing or stale scan sends an empty list, which the repository refuses with
+     * «нажмите Сканировать».
+     */
+    fun eraseDtc(addr: Int?) {
+        val now = System.currentTimeMillis()
+        val addrs = if (addr == null) {
+            DtcErasePlan.eligible(dtcSaved, now)
+        } else {
+            DtcErasePlan.eligibleBlock(dtcSaved, addr, now)
+        }
+        dtcScanRepository.startErase(addrs ?: IntArray(0))
+    }
 
     /** Opens the saved scan; never starts a new one. */
     fun openDtcDialog() {

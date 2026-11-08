@@ -404,6 +404,10 @@ interface HelperClient {
      */
     suspend fun enableNotificationListenerAccess(): Boolean
 
+    /** First half of the listener rebind (#325): disallows our own listener through the daemon;
+     *  [enableNotificationListenerAccess] gives it back. False on an old daemon without the op. */
+    suspend fun disallowNotificationListener(): Boolean = false
+
     /** Powers the cluster compositor on/off via auto_container (Wave P). True on daemon status 0. */
     suspend fun setClusterContainerMode(on: Boolean): Boolean
 
@@ -427,6 +431,10 @@ interface HelperClient {
 
     /** State and raw answers of the fault-code scan (TX_DTC_SCAN_STATUS); null when unreachable. */
     suspend fun dtcScanStatus(): DtcScanStatus? = null
+
+    /** Starts the daemon's erase of the stored codes of [addrs] (TX_DTC_ERASE_START): 0 started,
+     *  1 busy, -1 refused, -2 daemon too old to know the code; null when the daemon is unreachable. */
+    suspend fun dtcEraseStart(gearDev: Int, gearFid: Int, speedDev: Int, speedFid: Int, addrs: IntArray): Int? = null
 
     /**
      * Direct freeform launch: find-or-launch [packageName], switch its task to freeform,
@@ -1268,6 +1276,12 @@ open class HelperClientImpl @Inject constructor() : HelperClient {
             status == 0
         } ?: false
 
+    // FORCE_TIMEOUT_MS like the allow above: one `cmd` process spawn, slow on a cold head unit.
+    override suspend fun disallowNotificationListener(): Boolean =
+        transactParsed(HelperBinderProtocol.TX_DISALLOW_NOTIFICATION_LISTENER, { }, timeoutMs = FORCE_TIMEOUT_MS) { reply ->
+            if (reply.dataAvail() >= 4) reply.readInt() == 0 else false
+        } ?: false
+
     override suspend fun pushSubscribe(callback: IBinder, subs: List<FidPushSub>): List<FidPushResult>? =
         transactParsed(HelperBinderProtocol.TX_PUSH_SUBSCRIBE, { p ->
             p.writeStrongBinder(callback)
@@ -1328,6 +1342,25 @@ open class HelperClientImpl @Inject constructor() : HelperClient {
 
     override suspend fun dtcScanStatus(): DtcScanStatus? =
         transactParsed(HelperBinderProtocol.TX_DTC_SCAN_STATUS, { }, parse = ::readDtcScanStatus)
+
+    // dtcScanStart's path: an older daemon answers notHandled, which the caller reports as outdated.
+    override suspend fun dtcEraseStart(gearDev: Int, gearFid: Int, speedDev: Int, speedFid: Int, addrs: IntArray): Int? =
+        withContext(Dispatchers.IO) {
+            withTimeoutOrNull(REQ_TIMEOUT_MS) {
+                onBeforeLock?.invoke()
+                mutex.withLock {
+                    transactBodyUnlocked(
+                        HelperBinderProtocol.TX_DTC_ERASE_START,
+                        { p ->
+                            p.writeInt(gearDev); p.writeInt(gearFid)
+                            p.writeInt(speedDev); p.writeInt(speedFid)
+                            p.writeIntArray(addrs)
+                        },
+                        notHandled = DTC_SCAN_NOT_HANDLED,
+                    ) { if (it.dataAvail() < 4) null else it.readInt() }
+                }
+            }
+        }
 
     override suspend fun offReportArm(id: String, token: String, chatId: Long, text: String, lateMark: String): Boolean =
         transactParsed(
@@ -1538,7 +1571,7 @@ open class HelperClientImpl @Inject constructor() : HelperClient {
 
         private const val TAG = "HelperClient"
         private const val REQ_TIMEOUT_MS = 2000L
-        /** dtcScanStart's answer from a daemon that does not know TX_DTC_SCAN_START. */
+        /** dtcScanStart's / dtcEraseStart's answer from a daemon that does not know the code. */
         private const val DTC_SCAN_NOT_HANDLED = -2
         /** Budget for a [writeStatus] beforeSend guard (e.g. DriveModeChannel's terrain speed
          *  re-check): well under REQ_TIMEOUT_MS so a slow guard cannot hold the transport mutex

@@ -267,6 +267,8 @@ open class SettingsRepository @Inject constructor(
             Currency("CNY", "¥"),
             Currency("UZS", "UZS"),
             Currency("KGS", "сом"),
+            Currency("MDL", "MDL"),
+            Currency("RON", "lei"),
         )
     }
 

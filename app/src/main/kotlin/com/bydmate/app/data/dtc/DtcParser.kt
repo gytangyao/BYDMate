@@ -18,7 +18,16 @@ data class DtcList(val records: Int, val rows: List<DtcRow>, val negative: Boole
 
 data class DtcFound(val addr: Int, val row: DtcRow, val block: DtcBlockName)
 
-/** [found]: NOW rows first, then PENDING and OLD in address order. */
+/**
+ * Blocks shown as one: the same visible rows in the same order under the same block name (the
+ * L3 URE answers at 0x7E0 and 0x7E2 alike). [addrs] ascending, [block] and [rows] of the first.
+ */
+data class DtcBlockGroup(val addrs: List<Int>, val block: DtcBlockName, val rows: List<DtcRow>)
+
+/**
+ * [found]: NOW rows first, then PENDING and OLD in address order, every address of a merged
+ * group included; [now], [old] and [pending] count the codes of a merged group once.
+ */
 data class DtcScanSummary(
     val answered: Int,
     val total: Int,
@@ -48,6 +57,7 @@ object DtcParser {
     private const val CONFIRMED = 0x08
 
     private val LETTERS = charArrayOf('P', 'C', 'B', 'U')
+    private val UNMERGED = setOf(DtcBlock.BODY, DtcBlock.UNKNOWN)
 
     private val FAULTS = mapOf(
         0x87 to DtcFault.NO_SIGNAL,
@@ -119,16 +129,36 @@ object DtcParser {
                 parseList(list, format).rows.map { DtcFound(r.addr, it, block) }
             }
             .sortedBy { if (it.row.kind == DtcKind.NOW) 0 else 1 }
+        val rows = groups(found).flatMap { it.rows }
         return DtcScanSummary(
             answered = results.count { it.outcome in PRESENT },
             total = results.size,
-            now = found.count { it.row.kind == DtcKind.NOW },
-            old = found.count { it.row.kind == DtcKind.OLD },
-            pending = found.count { it.row.kind == DtcKind.PENDING },
+            now = rows.count { it.kind == DtcKind.NOW },
+            old = rows.count { it.kind == DtcKind.OLD },
+            pending = rows.count { it.kind == DtcKind.PENDING },
             found = found,
             unreadBlocks = results.count { unread(it) },
         )
     }
+
+    /**
+     * One group per address with rows, addresses with identical rows and block merged (addrs
+     * ascending); groups in the order their first address appears in [found], which for
+     * [summarize]'s list is the current code first, then address order. Only a named block merges:
+     * BODY and UNKNOWN name a family or nothing, so two of them are two control units.
+     */
+    fun groups(found: List<DtcFound>): List<DtcBlockGroup> = found
+        .groupBy { it.addr }
+        .map { (addr, list) -> DtcBlockGroup(listOf(addr), list.first().block, list.map { it.row }) }
+        .groupBy { g ->
+            val unit = if (g.block.block in UNMERGED) g.addrs.single() else null
+            Triple(g.block.block, g.rows, unit)
+        }
+        .values
+        .map { same ->
+            val addrs = same.map { it.addrs.single() }.sorted()
+            same.first { it.addrs.single() == addrs.first() }.copy(addrs = addrs)
+        }
 
     /** The count answer says there are codes, but no list was read (no answer, NRC, multiframe, cut). */
     private fun unread(r: DtcAddressResult): Boolean {

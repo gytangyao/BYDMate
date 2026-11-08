@@ -450,6 +450,36 @@ object AppModule {
         }
     }
 
+    /**
+     * 26: upstream's battery power and cumulative energy on every trip point, merged in after both
+     * lineages had stamped 25 with different schemas (ours the charge buffer, upstream these
+     * columns). Both additions are ensured here so a database written by either 25 opens on this
+     * schema; ours lacks the columns, upstream's lacks `charge_samples`.
+     */
+    internal val MIGRATION_25_26 = object : Migration(25, 26) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            if (!db.hasColumn("trip_points", "battery_power_w")) {
+                db.execSQL("ALTER TABLE trip_points ADD COLUMN battery_power_w REAL")
+            }
+            if (!db.hasColumn("trip_points", "battery_energy_wh")) {
+                db.execSQL("ALTER TABLE trip_points ADD COLUMN battery_energy_wh REAL")
+            }
+            if (!db.hasColumn("trip_points", "energy_run")) {
+                db.execSQL("ALTER TABLE trip_points ADD COLUMN energy_run INTEGER")
+            }
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS `charge_samples` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `ts` INTEGER NOT NULL,
+                    `power_kw` REAL,
+                    `soc` INTEGER,
+                    `bat_temp` INTEGER
+                )
+            """.trimIndent())
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_charge_samples_ts` ON `charge_samples` (`ts`)")
+        }
+    }
+
     private fun SupportSQLiteDatabase.hasColumn(table: String, column: String): Boolean {
         query("PRAGMA table_info(`$table`)").use { cursor ->
             val name = cursor.getColumnIndexOrThrow("name")
@@ -457,7 +487,6 @@ object AppModule {
         }
         return false
     }
-
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
@@ -473,7 +502,7 @@ object AppModule {
 
     /** Every production migration: the app database and a restored archive of an older schema share them. */
     fun withMigrations(builder: RoomDatabase.Builder<AppDatabase>): RoomDatabase.Builder<AppDatabase> =
-        builder.addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25)
+        builder.addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26)
 
     @Provides fun provideTripDao(db: AppDatabase): TripDao = db.tripDao()
     @Provides fun provideTripPointDao(db: AppDatabase): TripPointDao = db.tripPointDao()
@@ -842,6 +871,8 @@ object AppModule {
         // Alternative to our freeform split for firmwares that gate the freeform flag (#139).
         // Only reached while the native-mode switch is on; off for the whole fleet by default.
         nativeLauncher = com.bydmate.app.split.NativeSplitLauncher(ctx, journal),
+        // #385: below Android 12 (DiLink 3/4) every start answers "unavailable on this firmware".
+        platformSdk = android.os.Build.VERSION.SDK_INT,
         // The firmware's own 3:7 split (OTA V1.6). isApplicable() is false on every other
         // firmware, so this is inert for the rest of the fleet.
         split37 = com.bydmate.app.split.Split37Engine(
