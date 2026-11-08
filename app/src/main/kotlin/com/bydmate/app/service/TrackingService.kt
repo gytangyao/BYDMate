@@ -139,6 +139,7 @@ class TrackingService : Service(), LocationListener {
     @Inject lateinit var blindSpotController: com.bydmate.app.camera.BlindSpotController
     @Inject lateinit var clusterMusicBridge: com.bydmate.app.media.ClusterMusicBridge
     @Inject lateinit var lyricsDisplayEngine: com.bydmate.app.lyrics.LyricsDisplayEngine
+    @Inject lateinit var displayAppearance: com.bydmate.app.lyrics.DisplayAppearance
     @Inject lateinit var logRecorder: com.bydmate.app.diagnostics.LogRecorder
     @Inject lateinit var splitPreferences: com.bydmate.app.split.SplitPreferences
     @Inject lateinit var logTelegramSender: com.bydmate.app.diagnostics.LogTelegramSender
@@ -1529,11 +1530,13 @@ class TrackingService : Service(), LocationListener {
                 val elapsed = SystemClock.elapsedRealtime()
                 if (elapsed < mysqlCarStateRetryAtElapsedMs) return@launch
                 val fix = lastLocationFix
+                val look = displayAppearance.read()
                 val fingerprint = com.bydmate.app.data.mysql.CarStateFingerprint.of(
                     data = data,
                     latitude = fix?.location?.latitude,
                     longitude = fix?.location?.longitude,
                     locationLive = fix?.isLive == true,
+                    screen = look,
                 )
                 // 0 means "no push since this service started", not a timestamp an hour ago.
                 if (mysqlCarStateLastPushElapsedMs != 0L) {
@@ -1587,6 +1590,11 @@ class TrackingService : Service(), LocationListener {
                         tripLive = tripLiveBlock(),
                         extraFids = extraFidsCached(nowMs),
                         diagnostics = diagnosticsBlock(),
+                        display = com.bydmate.app.data.mysql.CarStateRawJson.DisplaySnapshot(
+                            theme = look.theme,
+                            brightness = look.brightness,
+                            auto = look.auto,
+                        ),
                     ),
                 )
                 mysqlSyncRepository.pushCarState(snapshot)

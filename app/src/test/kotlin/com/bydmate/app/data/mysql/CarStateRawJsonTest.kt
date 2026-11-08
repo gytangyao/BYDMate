@@ -237,6 +237,48 @@ class CarStateRawJsonTest {
         assertFalse(json.has("bsdLeft"))
     }
 
+    /** The head unit's own screen rides along so the phone can report what the car is showing. */
+    @Test
+    fun `display block carries the night bit and the backlight`() {
+        val json = JSONObject(
+            CarStateRawJson.build(
+                diParsData(soc = 50), 8L, sohPct = null, vehicleKind = null,
+                display = CarStateRawJson.DisplaySnapshot(
+                    theme = "dark",
+                    brightness = 107,
+                    auto = true,
+                ),
+            ),
+        )
+
+        val display = json.getJSONObject("display")
+        assertEquals("dark", display.getString("theme"))
+        assertEquals(107, display.getInt("brightness"))
+        assertTrue(display.getBoolean("auto"))
+    }
+
+    @Test
+    fun `an unreadable backlight is omitted and a missing snapshot means no block`() {
+        val json = JSONObject(
+            CarStateRawJson.build(
+                diParsData(soc = 50), 9L, sohPct = null, vehicleKind = null,
+                display = CarStateRawJson.DisplaySnapshot(
+                    theme = "light",
+                    brightness = null,
+                    auto = false,
+                ),
+            ),
+        )
+        val display = json.getJSONObject("display")
+        assertEquals("light", display.getString("theme"))
+        assertFalse(display.has("brightness"))
+
+        val bare = JSONObject(
+            CarStateRawJson.build(diParsData(soc = 50), 10L, sohPct = null, vehicleKind = null),
+        )
+        assertFalse(bare.has("display"))
+    }
+
     @Test
     fun `a non-finite reading never becomes invalid JSON`() {
         val data = diParsData(power = Double.NaN).copy(

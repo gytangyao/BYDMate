@@ -17,11 +17,11 @@ import org.json.JSONObject
  * Nulls are omitted rather than written: a missing key means "the car did not answer", never zero.
  * Keys are snake_case with units, and follow the typed column names where one exists.
  *
- * Besides the one-second poll payload, four optional blocks ride along (each omitted entirely
+ * Besides the one-second poll payload, five optional blocks ride along (each omitted entirely
  * when there is nothing to say): [chargeSession] from the charge detector's probe, [tripLive]
- * from last_state while a trip is open, [extraFids] read one-shot from autoservice, and
- * [diagnostics] about the head unit itself. They are additive: [VERSION] only changes when an
- * existing key changes meaning.
+ * from last_state while a trip is open, [extraFids] read one-shot from autoservice, [diagnostics]
+ * about the head unit itself, and [display] from the system's night bit and backlight. They are
+ * additive: [VERSION] only changes when an existing key changes meaning.
  */
 internal object CarStateRawJson {
 
@@ -86,6 +86,13 @@ internal object CarStateRawJson {
         val lastSyncTs: Long? = null,
     )
 
+    /** The head unit's own screen, so the phone can report what the car is showing right now. */
+    data class DisplaySnapshot(
+        val theme: String,
+        val brightness: Int? = null,
+        val auto: Boolean = false,
+    )
+
     fun build(
         data: DiParsData,
         pushedAt: Long,
@@ -96,6 +103,7 @@ internal object CarStateRawJson {
         tripLive: TripLiveSnapshot? = null,
         extraFids: Map<String, Double> = emptyMap(),
         diagnostics: DiagnosticsSnapshot? = null,
+        display: DisplaySnapshot? = null,
     ): String = JSONObject().apply {
         put("v", VERSION)
         put("pushed_at", pushedAt)
@@ -298,6 +306,13 @@ internal object CarStateRawJson {
                 put("sdk_int", d.sdkInt)
                 put("device", d.deviceModel)
                 num("last_sync_ts", d.lastSyncTs)
+            })
+        }
+        display?.let { d ->
+            put("display", JSONObject().apply {
+                put("theme", d.theme)
+                num("brightness", d.brightness)
+                put("auto", d.auto)
             })
         }
     }.toString()

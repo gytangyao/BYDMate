@@ -1,6 +1,7 @@
 package com.bydmate.app.data.mysql
 
 import com.bydmate.app.data.remote.diParsData
+import com.bydmate.app.lyrics.ScreenLook
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
@@ -81,5 +82,28 @@ class CarStateFingerprintTest {
 
         assertNotEquals(here, CarStateFingerprint.of(car, 31.2315, 121.4737, locationLive = true))
         assertNotEquals(here, CarStateFingerprint.of(car, 31.2304, 121.4737, locationLive = false))
+    }
+
+    @Test
+    fun `a theme flip or an auto switch produces a different fingerprint`() {
+        val car = diParsData(soc = 62)
+        val dark = CarStateFingerprint.of(car, screen = ScreenLook("dark", 120, false))
+
+        assertNotEquals(dark, CarStateFingerprint.of(car, screen = ScreenLook("light", 120, false)))
+        assertNotEquals(dark, CarStateFingerprint.of(car, screen = ScreenLook("dark", 120, true)))
+    }
+
+    @Test
+    fun `backlight noise inside one quantum does not count as a change`() {
+        val car = diParsData(soc = 62)
+
+        assertEquals(
+            CarStateFingerprint.of(car, screen = ScreenLook("dark", 120, true)),
+            CarStateFingerprint.of(car, screen = ScreenLook("dark", 123, true)),
+        )
+        assertNotEquals(
+            CarStateFingerprint.of(car, screen = ScreenLook("dark", 120, true)),
+            CarStateFingerprint.of(car, screen = ScreenLook("dark", 140, true)),
+        )
     }
 }

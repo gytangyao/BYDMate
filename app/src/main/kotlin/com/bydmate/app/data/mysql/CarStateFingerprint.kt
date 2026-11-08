@@ -1,6 +1,7 @@
 package com.bydmate.app.data.mysql
 
 import com.bydmate.app.data.remote.DiParsData
+import com.bydmate.app.lyrics.ScreenLook
 
 /**
  * Canonical value of everything a `car_state` row says about the car, used to decide whether the
@@ -14,14 +15,22 @@ import com.bydmate.app.data.remote.DiParsData
  *
  * The location is not part of [DiParsData]; the caller passes it separately so a parked car whose
  * GPS jitters by a few metres is not mistaken for a moving one. Four decimal places ≈ 11 m.
+ *
+ * The head unit's appearance is also passed separately, for the same reason: it belongs to the
+ * device, not the car. A night/day flip or a driver turning the backlight down is a change the
+ * phone should see on the next row, so it must not be swallowed here.
  */
 internal object CarStateFingerprint {
+
+    /** One step of 255 ≈ 6%, the resolution the phone shows "亮度 42%" at. */
+    private const val BRIGHTNESS_STEP = 16
 
     fun of(
         data: DiParsData,
         latitude: Double? = null,
         longitude: Double? = null,
         locationLive: Boolean = false,
+        screen: ScreenLook? = null,
     ): String {
         val vehicle = data.copy(
             mileage = q(data.mileage, 0.1),
@@ -50,7 +59,12 @@ internal object CarStateFingerprint {
         ).toString()
         val lat = latitude?.let { Math.round(it * 10_000) }
         val lon = longitude?.let { Math.round(it * 10_000) }
-        return "$vehicle|loc=$lat,$lon,live=$locationLive"
+        // Quantized because auto brightness drifts with the light all evening; theme and the auto
+        // flag stay exact, since a night/day flip is a change worth a row on the next tick.
+        val display = screen?.let {
+            "theme=${it.theme},auto=${it.auto},brightness=${q(it.brightness, BRIGHTNESS_STEP)}"
+        } ?: "none"
+        return "$vehicle|loc=$lat,$lon,live=$locationLive|display=$display"
     }
 
     private fun q(value: Double?, step: Double): Double? =
